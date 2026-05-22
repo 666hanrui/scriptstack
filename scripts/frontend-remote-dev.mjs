@@ -14,6 +14,7 @@ const child = spawn(
       ...process.env,
       VITE_API_BASE: apiBase,
     },
+    shell: process.platform === "win32",
     stdio: "inherit",
   },
 );

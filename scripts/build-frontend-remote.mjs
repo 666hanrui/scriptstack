@@ -11,6 +11,7 @@ const child = spawn(viteBin, ["build", "--config", "frontend-src/vite.config.ts"
     ...process.env,
     VITE_API_BASE: apiBase,
   },
+  shell: process.platform === "win32",
   stdio: "inherit",
 });
 
