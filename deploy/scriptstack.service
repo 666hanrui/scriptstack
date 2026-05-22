@@ -1,0 +1,25 @@
+[Unit]
+Description=ScriptStack Server
+After=network.target
+
+[Service]
+Type=simple
+User=scriptstack
+Group=scriptstack
+WorkingDirectory=/opt/scriptstack
+ExecStart=/opt/scriptstack/scriptstack-server
+EnvironmentFile=/opt/scriptstack/.env
+Restart=on-failure
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+
+# 安全加固
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/opt/scriptstack/data
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

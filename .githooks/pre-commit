@@ -1,0 +1,22 @@
+#!/bin/bash
+ARCHIVE="original-prompt-archive/manifest.json"
+PROMPT_DIR="src-tauri/src/llm/prompts"
+if [ ! -f "$ARCHIVE" ]; then exit 0; fi
+CHANGED=$(git diff --cached --name-only -- "$PROMPT_DIR/" | grep '\.txt$')
+if [ -z "$CHANGED" ]; then exit 0; fi
+python3 -c "
+import json,os,hashlib,sys
+m=json.load(open('$ARCHIVE'))
+bad=[]
+for f in m['files']:
+    rp=os.path.join('original-prompt-archive',f['archivePath'])
+    ap=os.path.join('$PROMPT_DIR',f['file'])
+    rh=hashlib.sha256(open(rp,'rb').read()).hexdigest()
+    ah=hashlib.sha256(open(ap,'rb').read()).hexdigest() if os.path.exists(ap) else 'MISSING'
+    if rh!=ah: bad.append(f'{f[\"file\"]}: raw={rh[:12]} active={ah[:12]}')
+if bad:
+    print('BLOCKED: prompt modified from archive:')
+    for b in bad: print(f'  {b}')
+    sys.exit(1)
+print('OK: 23/23 match')
+"

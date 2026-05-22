@@ -1,0 +1,31 @@
+# Rust
+target/
+src-tauri/target/
+src-tauri/data/
+src-server/data/
+
+# Node
+node_modules/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Env
+.env
+.env.local
+.env.*.local
+
+# IDE
+.idea/
+*.swp
+*.swo
+
+# Claude local settings
+.claude/settings.local.json
+
+# Proxy config (contains credentials)
+.npmrc
+
+# Extracted reference app (not source code)
+extracted/

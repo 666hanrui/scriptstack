@@ -1,0 +1,176 @@
+@import "tailwindcss";
+
+@theme {
+  --color-bg-primary: var(--bg-primary);
+  --color-bg-secondary: var(--bg-secondary);
+  --color-bg-card: var(--bg-card);
+  --color-border-subtle: var(--border-subtle);
+  --color-border-divider: var(--border-divider);
+  --color-text-primary: var(--text-primary);
+  --color-text-secondary: var(--text-secondary);
+  --color-accent: var(--accent);
+  --color-accent-glow: var(--accent-glow);
+  --color-surface: var(--surface);
+  --color-surface-elevated: var(--surface-elevated);
+  --color-surface-hover: var(--surface-hover);
+  --color-surface-muted: var(--surface-muted);
+  --color-field-bg: var(--field-bg);
+  --color-code-bg: var(--code-bg);
+}
+
+:root {
+  --bg-primary: #000000;
+  --bg-secondary: #0a0a0a;
+  --bg-card: #0d0d0d;
+  --border-subtle: #222222;
+  --border-divider: #1a1a1a;
+  --text-primary: #ffffff;
+  --text-secondary: #888888;
+  --accent: #5e6ad2;
+  --accent-glow: rgba(94, 106, 210, 0.4);
+  --surface: #111111;
+  --surface-elevated: #1a1a1a;
+  --surface-hover: #1f1f1f;
+  --surface-muted: #0a0a0a;
+  --field-bg: #141414;
+  --code-bg: #050505;
+}
+
+.light {
+  --bg-primary: #ffffff;
+  --bg-secondary: #f9f9f9;
+  --bg-card: #ffffff;
+  --border-subtle: #eaeaea;
+  --border-divider: #f0f0f0;
+  --text-primary: #111111;
+  --text-secondary: #666666;
+  --accent: #5e6ad2;
+  --accent-glow: rgba(94, 106, 210, 0.2);
+  --surface: #f9f9f9;
+  --surface-elevated: #ffffff;
+  --surface-hover: #f0f0f0;
+  --surface-muted: #fbfbfb;
+  --field-bg: #f9f9f9;
+  --code-bg: #f5f5f5;
+}
+
+body {
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+@keyframes slideIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.animate-slide-in {
+  animation: slideIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.scriptstack-root[data-theme="light"] {
+  color: rgba(15, 23, 42, 0.88);
+}
+
+.scriptstack-root[data-theme="light"] [class*="text-white"] {
+  color: rgba(15, 23, 42, 0.72) !important;
+}
+
+.scriptstack-root[data-theme="light"] button[data-variant="primary"],
+.scriptstack-root[data-theme="light"] button[data-variant="primary"] svg {
+  color: #fff !important;
+}
+
+.scriptstack-root[data-theme="light"] h1,
+.scriptstack-root[data-theme="light"] h2,
+.scriptstack-root[data-theme="light"] h3,
+.scriptstack-root[data-theme="light"] [class*="font-bold"][class*="text-white"] {
+  color: rgba(2, 6, 23, 0.9) !important;
+}
+
+.scriptstack-root[data-theme="light"] [class*="text-indigo"],
+.scriptstack-root[data-theme="light"] [class*="text-indigo"] svg {
+  color: rgb(79, 70, 229) !important;
+}
+
+.scriptstack-root[data-theme="light"] [class*="text-cyan"] {
+  color: rgb(8, 145, 178) !important;
+}
+
+.scriptstack-root[data-theme="light"] [class*="text-amber"] {
+  color: rgb(180, 83, 9) !important;
+}
+
+.scriptstack-root[data-theme="light"] [class*="text-rose"],
+.scriptstack-root[data-theme="light"] [class*="text-red"] {
+  color: rgb(190, 18, 60) !important;
+}
+
+.scriptstack-root[data-theme="light"] [class*="text-green"] {
+  color: rgb(22, 101, 52) !important;
+}
+
+.scriptstack-root[data-theme="light"] [class*="bg-[#050505]"],
+.scriptstack-root[data-theme="light"] [class*="bg-[#080808]"],
+.scriptstack-root[data-theme="light"] [class*="bg-[#0a0a0a]"],
+.scriptstack-root[data-theme="light"] [class*="bg-[#0d0d0d]"],
+.scriptstack-root[data-theme="light"] [class*="bg-black"] {
+  background-color: var(--field-bg) !important;
+}
+
+.scriptstack-root[data-theme="light"] [class*="bg-white/"] {
+  background-color: rgba(15, 23, 42, 0.045) !important;
+}
+
+.scriptstack-root[data-theme="light"] [class*="border-white"] {
+  border-color: rgba(15, 23, 42, 0.11) !important;
+}
+
+.scriptstack-root[data-theme="light"] input,
+.scriptstack-root[data-theme="light"] textarea,
+.scriptstack-root[data-theme="light"] select {
+  color: rgba(15, 23, 42, 0.95) !important;
+  background-color: var(--field-bg) !important;
+  border-color: var(--border-subtle) !important;
+}
+
+.scriptstack-root[data-theme="light"] input::placeholder,
+.scriptstack-root[data-theme="light"] textarea::placeholder {
+  color: rgba(71, 85, 105, 0.5) !important;
+}
+
+.scriptstack-root[data-theme="light"] button[class*="bg-indigo"],
+.scriptstack-root[data-theme="light"] button[class*="bg-red"],
+.scriptstack-root[data-theme="light"] button[class*="bg-cyan"],
+.scriptstack-root[data-theme="light"] button[class*="bg-rose"] {
+  color: white !important;
+}
+
+.scriptstack-root[data-theme="light"] pre {
+  color: rgba(22, 101, 52, 0.9) !important;
+}
+
+@layer utilities {
+  .custom-scrollbar::-webkit-scrollbar {
+    width: 4px;
+    height: 4px;
+  }
+  .custom-scrollbar::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  .custom-scrollbar::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 10px;
+  }
+  .custom-scrollbar:hover::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.3);
+  }
+}
+
+body {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  background-color: var(--bg-primary);
+}

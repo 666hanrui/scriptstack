@@ -1,0 +1,177 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>剧本栈 ScriptStack</title>
+    <script>
+      (function () {
+        "use strict";
+        var I = window.__TAURI_INTERNALS__;
+        function missing(name) {
+          return Promise.reject(new Error("Tauri IPC not available: " + name));
+        }
+        function invoke(command, args) {
+          if (!I) return missing(command);
+          return I.invoke(command, args || {});
+        }
+        function listen(event, handler) {
+          if (!I) return Promise.resolve(function () {});
+          var id = I.transformCallback(function (d) {
+            handler(d && d.payload !== void 0 ? d.payload : d);
+          });
+          return invoke("plugin:event|listen", {
+            event: event,
+            target: { kind: "Any" },
+            handler: id,
+          }).then(function (eventId) {
+            return function () {
+              invoke("plugin:event|unlisten", { event: event, eventId: eventId }).catch(function () {});
+            };
+          });
+        }
+        function onEvent(event, handler) {
+          return listen(event, function (d) {
+            handler(d && d.payload !== void 0 ? d.payload : d);
+          });
+        }
+
+        var _fetch = window.fetch;
+        window.fetch = function (u, i) {
+          var url = typeof u === "string" ? u : u && u.url;
+          if (url && url.indexOf("app://scriptstack-local-auth") >= 0) {
+            var opts = i || {};
+            var body = JSON.parse(opts.body || "{}");
+            var p;
+            if (url.indexOf("/login") >= 0) {
+              p = invoke("auth_login", { username: body.username, password: body.password });
+            } else if (url.indexOf("/register") >= 0) {
+              p = invoke("auth_register", {
+                username: body.username,
+                password: body.password,
+                email: body.email || "",
+              });
+            } else if (url.indexOf("/refresh") >= 0) {
+              p = invoke("auth_refresh", { refreshToken: body.refreshToken });
+            } else {
+              p = Promise.reject(new Error("Unknown local auth endpoint"));
+            }
+            return p
+              .then(function (d) {
+                return new Response(JSON.stringify(d), {
+                  status: 200,
+                  headers: { "Content-Type": "application/json" },
+                });
+              })
+              .catch(function (e) {
+                return new Response(JSON.stringify({ error: "本地请求错误: " + e }), {
+                  status: 502,
+                  headers: { "Content-Type": "application/json" },
+                });
+              });
+          }
+          return _fetch.call(this, u, i);
+        };
+
+        window.tudouApp = {
+          invoke: invoke,
+          getAppVersion: function () { return invoke("get_version"); },
+          setAuthToken: function (token, refreshToken) { return invoke("set_auth_token", { token: token, refreshToken: refreshToken || "" }); },
+          getAppSettings: function () { return invoke("get_app_settings"); },
+          saveAppSettings: function (payload) { return invoke("save_app_settings", { payload: payload }); },
+          getDatabaseMeta: function () { return invoke("get_database_meta"); },
+          testConnection: function (payload) { return invoke("test_connection", { payload: payload }); },
+          getRecentScriptTasks: function () { return invoke("get_recent_script_tasks"); },
+          getRecentImagePromptTasks: function () { return invoke("get_recent_image_tasks"); },
+          getRecentVideoPromptTasks: function () { return invoke("get_recent_video_tasks"); },
+          loadScriptTask: function (taskId) { return invoke("load_script_task", { taskId: taskId }); },
+          deleteScriptTask: function (taskId) { return invoke("delete_script_task", { taskId: taskId }); },
+          deleteImageTask: function (taskId) { return invoke("delete_image_task", { taskId: taskId }); },
+          deleteVideoTask: function (taskId) { return invoke("delete_video_task", { taskId: taskId }); },
+          saveScriptDraft: function (payload) { return invoke("save_script_draft", { payload: payload }); },
+          saveImagePromptDraft: function (payload) { return invoke("save_image_prompt_draft", { payload: payload }); },
+          saveVideoPromptDraft: function (payload) { return invoke("save_video_prompt_draft", { payload: payload }); },
+          runScriptGeneration: function (payload) { return invoke("save_script_generation", { payload: payload }); },
+          updateScriptBody: function (taskId, newBody) { return invoke("update_script_body", { taskId: taskId, newBody: newBody }); },
+          importExistingScript: function (payload) { return invoke("import_existing_script", { payload: payload }); },
+          runScriptReview: function (payload) { return invoke("run_script_review", { payload: payload }); },
+          runImagePromptGeneration: function (payload) { return invoke("run_image_generation", { payload: payload }); },
+          runVideoPromptGeneration: function (payload) { return invoke("run_video_generation", { payload: payload }); },
+          runImagePromptReview: function (payload) { return invoke("run_image_review", { payload: payload }); },
+          runVideoPromptReview: function (payload) { return invoke("run_video_review", { payload: payload }); },
+          extractAssets: function (payload) { return invoke("run_asset_extraction", { payload: payload }); },
+          getAssetsByTask: function (taskId) { return invoke("get_assets_by_task", { taskId: taskId }); },
+          updateAssets: function (taskId, characters, scenes, props) {
+            return invoke("update_assets", {
+              taskId: taskId,
+              characters: JSON.stringify(characters || []),
+              scenes: JSON.stringify(scenes || []),
+              props: JSON.stringify(props || []),
+            });
+          },
+          runPromptGeneration: function (payload) { return invoke("run_prompt_generation", { payload: payload }); },
+          runPromptGroupGeneration: function (payload) { return invoke("run_prompt_group_generation", { payload: payload }); },
+          updatePromptOutput: function (taskId, seedanceGroups) {
+            return invoke("update_prompt_output", { taskId: taskId, seedanceGroups: JSON.stringify(seedanceGroups || []) });
+          },
+          getPromptOutputByTask: function (taskId) { return invoke("get_prompt_output_by_task", { taskId: taskId }); },
+          getSceneCount: function (taskId) { return invoke("get_scene_count", { taskId: taskId }); },
+          getSegmentTitles: function (taskId) { return invoke("get_segment_titles", { taskId: taskId }); },
+          runPromptQualityCheck: function (taskId) { return invoke("run_prompt_quality_check", { taskId: taskId }); },
+          generateOutline: function (payload) { return invoke("generate_outline", { payload: payload }); },
+          confirmOutline: function (payload) { return invoke("confirm_outline", { payload: payload }); },
+          getOutline: function (taskId) { return invoke("get_outline", { taskId: taskId }); },
+          getProjects: function () { return invoke("get_projects"); },
+          renameProject: function (projectId, newName) { return invoke("rename_project", { projectId: projectId, newName: newName }); },
+          deleteProject: function (projectId) { return invoke("delete_project", { projectId: projectId }); },
+          selectTextFile: function () { return invoke("select_text_file"); },
+          selectImageFile: function () { return invoke("select_image_file"); },
+          screenplay: {
+            skillStatus: function () { return invoke("screenplay_skill_status"); },
+            createProject: function (init) { return invoke("screenplay_create_project", { init: init }); },
+            getProject: function (projectId) { return invoke("screenplay_get_project", { projectId: projectId }); },
+            listRecentProjects: function (limit) { return invoke("screenplay_list_recent_projects", { limit: limit || 20 }); },
+            deleteProject: function (projectId) { return invoke("screenplay_delete_project", { projectId: projectId }); },
+            renameProject: function (payload) { return invoke("screenplay_rename_project", { payload: payload }); },
+            updateStepStructured: function (payload) { return invoke("screenplay_update_step_structured", { payload: payload }); },
+            finalizeToScriptTask: function (payload) { return invoke("screenplay_finalize_to_script_task", { payload: payload }); },
+            generateStep: function (payload) { return invoke("screenplay_generate_step", { payload: payload }); },
+            selfcheckStep: function (payload) { return invoke("screenplay_selfcheck_step", { payload: payload }); },
+            getCachedSelfcheck: function (payload) { return invoke("screenplay_get_cached_selfcheck", { payload: payload }); },
+            approveStep: function (payload) { return invoke("screenplay_approve_step", { payload: payload }); },
+            rollbackTo: function (payload) { return invoke("screenplay_rollback_to", { payload: payload }); },
+            listVersions: function (payload) { return invoke("screenplay_list_versions", { payload: payload }); },
+            restoreVersion: function (payload) { return invoke("screenplay_restore_version", { payload: payload }); },
+            setStepSelection: function (payload) { return invoke("screenplay_set_step_selection", { payload: payload }); },
+            getCheckpoint: function (payload) { return invoke("screenplay_get_checkpoint", { payload: payload }); },
+            regenerateCheckpoint: function (payload) { return invoke("screenplay_regenerate_checkpoint", { payload: payload }); },
+            onStreamChunk: function (fn) { return onEvent("screenplay:stream-chunk", fn); },
+          },
+          seedance: {
+            runPhaseAD: function (payload) { return invoke("seedance_run_phase_ad", { payload: payload }); },
+            getAnalysis: function (payload) { return invoke("seedance_get_analysis", { payload: payload }); },
+            listUnits: function (payload) { return invoke("seedance_list_units", { payload: payload }); },
+            getUnit: function (payload) { return invoke("seedance_get_unit", { payload: payload }); },
+            runUnit: function (payload) { return invoke("seedance_run_unit", { payload: payload }); },
+            runAll: function (payload) { return invoke("seedance_run_all", { payload: payload }); },
+            onProgress: function (fn) { return onEvent("seedance:progress", fn); },
+            onAnalysisChunk: function (fn) { return onEvent("seedance:analysis-chunk", fn); },
+            onUnitChunk: function (fn) { return onEvent("seedance:unit-chunk", fn); },
+          },
+          on: function (eventName, callback) { return onEvent(eventName, callback); },
+          onSessionExpired: function () { return function () {}; },
+          checkForUpdate: function () { return Promise.resolve(null); },
+          installUpdate: function () { return Promise.resolve(null); },
+          onUpdateAvailable: function () { return function () {}; },
+          onUpdateProgress: function () { return function () {}; },
+          onUpdateDownloaded: function () { return function () {}; },
+          onUpdateError: function () { return function () {}; },
+        };
+      })();
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
