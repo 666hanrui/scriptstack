@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
-import { listen } from '@tauri-apps/api/event';
-import { Box, Clapperboard, FileText, Film, FolderKanban, Image as ImageIcon, Layers3, Library, Map, RefreshCw, Save, Users } from 'lucide-react';
+import { listenEvent } from '../lib/event-bridge';
+import { Box, Clapperboard, FileText, Film, FolderKanban, Layers3, Library, Map, RefreshCw, Save, Sparkles, Users, Camera } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import ScriptSelector from '../components/ScriptSelector';
 import { useAppStore } from '../store/useAppStore';
@@ -15,6 +15,7 @@ import ActionBar, { ActionButton } from '../components/ui/ActionBar';
 import EmptyState from '../components/ui/EmptyState';
 import FormField, { TextArea, TextInput } from '../components/ui/FormField';
 import ResultViewer from '../components/ui/ResultViewer';
+import AssetImageGallery from '../components/visual/AssetImageGallery';
 
 type AssetTab = 'characters' | 'scenes' | 'props';
 type ExtractionMeta = {
@@ -31,10 +32,45 @@ const FIELD_MAP: Record<AssetTab, string[]> = {
   props: ['name', 'dramaticFunction', 'form', 'material', 'surfaceState', 'aiPrompt'],
 };
 
+const FIELD_LABELS: Record<string, string> = {
+  name: '名称',
+  appearance: '外貌',
+  clothing: '服装',
+  personality: '性格',
+  visualAnchor: '视觉锚点',
+  atmosphere: '氛围',
+  materials: '材质',
+  landmarks: '关键地标',
+  colorTemperature: '色温 / 主色调',
+  dramaticFunction: '戏剧功能',
+  form: '形态',
+  material: '材质',
+  surfaceState: '表面状态',
+  aiPrompt: '中文资产提示词 / 创作源',
+};
+
 const TAB_META: Record<AssetTab, { label: string; icon: any }> = {
   characters: { label: '角色', icon: Users },
   scenes: { label: '场景', icon: Map },
   props: { label: '道具', icon: Box },
+};
+
+const VISUAL_OPTIONS: Record<AssetTab, Array<{ label: string; type: string }>> = {
+  characters: [
+    { label: '三视图', type: 'character_turnaround_3_view' },
+    { label: '定妆照', type: 'character_portrait_costume' },
+    { label: '表情表', type: 'character_expression_sheet_9' },
+  ],
+  scenes: [
+    { label: '概念图', type: 'scene_concept_wide_shot' },
+    { label: '氛围板', type: 'scene_mood_board' },
+    { label: '恐怖氛围', type: 'scene_horror_atmosphere' },
+  ],
+  props: [
+    { label: '设定图', type: 'prop_design_sheet' },
+    { label: '材质细节', type: 'prop_material_detail' },
+    { label: '结构拆解', type: 'prop_exploded_view' },
+  ],
 };
 
 const EMPTY: AssetBundle = { characters: [], scenes: [], props: [] };
@@ -47,6 +83,15 @@ const pickProjectId = (task: ScriptTask) => {
   const anyTask = task as any;
   return anyTask.projectId || anyTask.project_id || anyTask.task?.projectId || anyTask.task?.project_id || '';
 };
+
+function fileToBase64(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result || ''));
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
 
 function eventLine(eventName: string, payload: any) {
   const count = payload?.count !== undefined ? ` count=${payload.count}` : '';
@@ -74,7 +119,7 @@ function metaFromResult(result: any): ExtractionMeta {
 }
 
 export default function AssetsForge() {
-  const { setRealm, currentTaskId, setCurrentTaskId, currentProjectId, setCurrentProjectId } = useAppStore();
+  const { setRealm, currentTaskId, setCurrentTaskId, currentProjectId, setCurrentProjectId, showToast } = useAppStore();
   const { invoke } = useTudouBridge();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<AssetTab>('characters');
@@ -83,6 +128,8 @@ export default function AssetsForge() {
   const [progress, setProgress] = useState<string[]>([]);
   const [busy, setBusy] = useState<'load' | 'extract' | 'save' | ''>('');
   const [error, setError] = useState('');
+  const [assetSheetPlan, setAssetSheetPlan] = useState<any>(null);
+  const [assetSheetBusy, setAssetSheetBusy] = useState('');
 
   useEffect(() => {
     setRealm('samurai');
@@ -96,8 +143,7 @@ export default function AssetsForge() {
   useEffect(() => {
     const names = ['asset:scan-start', 'asset:scan-character', 'asset:scan-scene', 'asset:scan-prop', 'asset:scan-done', 'asset:scan-error'];
     let unlisteners: Array<() => void> = [];
-    Promise.all(names.map((name) => listen(name, (event: any) => {
-      const payload = event.payload || {};
+    Promise.all(names.map((name) => listenEvent(name, (payload: any) => {
       const taskId = payload.taskId || payload.task_id;
       if (taskId && currentTaskId && taskId !== currentTaskId) return;
       setProgress((prev) => [eventLine(name, payload), ...prev].slice(0, 100));
@@ -203,6 +249,48 @@ export default function AssetsForge() {
     }
   }
 
+  async function createAssetSheetPlan() {
+    if (!currentTaskId) return;
+    setAssetSheetBusy('plan');
+    setError('');
+    try {
+      const result = await invoke<any>('asset-sheet/plan', { taskId: currentTaskId }, { timeout: 120000 });
+      setAssetSheetPlan(result);
+      showToast({ message: '道具合板计划已生成', type: 'success' });
+    } catch (err: any) {
+      setError(err.message || '生成道具合板计划失败');
+    } finally {
+      setAssetSheetBusy('');
+    }
+  }
+
+  async function cropAssetSheet(batchId: string, file?: File) {
+    if (!batchId || !file) return;
+    setAssetSheetBusy(batchId);
+    setError('');
+    try {
+      const base64 = await fileToBase64(file);
+      const result = await invoke<any>('asset-sheet/crop', { batchId, base64, mimeType: file.type }, { timeout: 120000 });
+      showToast({ message: `已裁切 ${result?.images?.length || 0} 张道具子图`, type: 'success' });
+      if (currentTaskId) await loadAssets(currentTaskId);
+    } catch (err: any) {
+      setError(err.message || '裁切合板失败');
+    } finally {
+      setAssetSheetBusy('');
+    }
+  }
+
+  function openVisualPrompt(templateType: string, index: number, item: any) {
+    const assetType = activeTab === 'characters' ? 'character' : activeTab === 'scenes' ? 'scene' : 'prop';
+    const params = new URLSearchParams({
+      assetType,
+      assetIndex: String(index),
+      type: templateType,
+    });
+    if (item?.id) params.set('assetId', item.id);
+    navigate(`/visual-prompts?${params.toString()}`);
+  }
+
   const items = arr(assets[activeTab]);
   const ActiveIcon = TAB_META[activeTab].icon;
 
@@ -212,12 +300,11 @@ export default function AssetsForge() {
         icon={<Library size={24} />}
         eyebrow="Canonical Asset Flow"
         title="资产矩阵 / 验收工作台"
-        subtitle="严格对应 asset_character、asset_scene、asset_prop。资产页只负责角色、场景、道具的提取、编辑和保存，后续图像、视频、逐镜提示词继续走各自原始 prompt。"
         actions={
           <ActionBar align="right" className="flex-wrap">
             <ActionButton variant="secondary" onClick={() => navigate('/projects')} icon={<FolderKanban size={16} />}>项目库</ActionButton>
             <ActionButton variant="secondary" onClick={() => navigate('/scripts')} icon={<FileText size={16} />}>剧本</ActionButton>
-            <ActionButton variant="secondary" onClick={() => navigate('/image')} disabled={!currentTaskId} icon={<ImageIcon size={16} />}>图像</ActionButton>
+            <ActionButton variant="secondary" onClick={() => navigate('/visual-prompts')} disabled={!currentTaskId} icon={<Sparkles size={16} />}>视觉工坊</ActionButton>
             <ActionButton variant="secondary" onClick={() => navigate('/video')} disabled={!currentTaskId} icon={<Film size={16} />}>视频</ActionButton>
             <ActionButton variant="secondary" onClick={() => navigate('/frame-prompt')} disabled={!currentTaskId} icon={<Layers3 size={16} />}>逐镜</ActionButton>
             <ActionButton variant="secondary" onClick={() => navigate('/seedance')} disabled={!currentTaskId} icon={<Clapperboard size={16} />}>Seedance</ActionButton>
@@ -275,6 +362,45 @@ export default function AssetsForge() {
               )}
             </Panel>
 
+          <Panel title="道具资产合板" subtitle="把多个道具按规则网格一次生图，再裁切回独立资产。">
+            <div className="space-y-4">
+              <ActionButton onClick={createAssetSheetPlan} disabled={!currentTaskId || assetSheetBusy === 'plan'} isLoading={assetSheetBusy === 'plan'} icon={<Box size={16} />}>生成合板计划</ActionButton>
+              {assetSheetPlan?.batches?.length ? (
+                <div className="space-y-4">
+                  {assetSheetPlan.batches.map((batch: any) => (
+                    <div key={batch.id} className="rounded-xl border border-white/[0.06] bg-black/20 p-3 space-y-3">
+                      <div>
+                        <div className="text-sm font-bold text-white/80">{batch.title}</div>
+                        <div className="text-[11px] text-white/35 font-mono">{batch.gridRows}x{batch.gridCols} · {batch.id}</div>
+                      </div>
+                      <TextArea value={batch.prompt || ''} onChange={() => {}} rows={6} />
+                      <div className="grid grid-cols-2 gap-2">
+                        {(batch.cells || []).map((cell: any) => (
+                          <div key={cell.id} className="rounded-lg bg-white/[0.03] border border-white/[0.05] px-2 py-1.5 text-[11px] text-white/55">
+                            {cell.cellLabel} · {cell.assetName}
+                          </div>
+                        ))}
+                      </div>
+                      <label className="block">
+                        <input
+                          type="file"
+                          accept="image/*"
+                          className="hidden"
+                          onChange={(event) => cropAssetSheet(batch.id, event.target.files?.[0])}
+                        />
+                        <span className="inline-flex items-center justify-center px-3 py-2 rounded-lg border border-indigo-500/30 bg-indigo-500/10 text-indigo-200 text-xs font-bold cursor-pointer hover:bg-indigo-500/20">
+                          {assetSheetBusy === batch.id ? '裁切中...' : '上传合板图并裁切'}
+                        </span>
+                      </label>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-sm text-white/35">先完成道具资产扫描，再生成合板计划。</div>
+              )}
+            </div>
+          </Panel>
+
           <Panel title="扫描事件日志" subtitle="最近 100 条事件" noPadding>
             <ResultViewer maxHeight="max-h-[300px]" title="ASSET EVENTS" content={progress.length ? progress.join('\n') : '等待真实资产扫描事件。'} />
           </Panel>
@@ -308,10 +434,21 @@ export default function AssetsForge() {
                         <div className="text-base font-bold text-white/90 tracking-wide">{TAB_META[activeTab].label} #{index + 1}</div>
                         <div className="text-[11px] text-white/40 mt-1">{item.name || '未命名资产'}</div>
                       </div>
+                      <div className="flex flex-wrap justify-end gap-2 max-w-[260px]">
+                        {VISUAL_OPTIONS[activeTab].map((option) => (
+                          <button
+                              key={option.type}
+                              onClick={() => openVisualPrompt(option.type, index, item)}
+                              className="px-3 py-1.5 rounded-lg border border-indigo-500/25 bg-indigo-500/10 text-indigo-200 text-[11px] font-bold hover:bg-indigo-500/20 transition-colors"
+                            >
+                              {option.label}
+                            </button>
+                          ))}
+                        </div>
                     </div>
                     <div className="space-y-4">
                       {FIELD_MAP[activeTab].map((field) => (
-                        <FormField key={field} label={field}>
+                        <FormField key={field} label={FIELD_LABELS[field] || field}>
                           {field === 'aiPrompt' ? (
                             <TextArea value={item[field] || ''} onChange={(event: any) => updateField(activeTab, index, field, event.target.value)} rows={3} />
                           ) : (
@@ -319,6 +456,20 @@ export default function AssetsForge() {
                           )}
                         </FormField>
                       ))}
+                    </div>
+
+                    {/* Inline Image Gallery for this asset */}
+                    <div className="mt-4 pt-4 border-t border-white/[0.06]">
+                      <div className="flex items-center gap-2 mb-2">
+                        <Camera size={13} className="text-white/40" />
+                        <span className="text-[11px] font-bold text-white/50">参考图片</span>
+                      </div>
+                      <AssetImageGallery
+                        compact
+                        assetType={activeTab === 'characters' ? 'character' : activeTab === 'scenes' ? 'scene' : 'prop'}
+                        assetId={item.id || `${activeTab}-${index}`}
+                        assetName={item.name || `${TAB_META[activeTab].label} #${index + 1}`}
+                      />
                     </div>
                   </div>
                 ))}

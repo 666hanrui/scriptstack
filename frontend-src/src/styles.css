@@ -1,94 +1,73 @@
 @import "tailwindcss";
 
+@theme {
+  --color-bg-primary: var(--bg-primary);
+  --color-bg-secondary: var(--bg-secondary);
+  --color-bg-card: var(--bg-card);
+  --color-border-subtle: var(--border-subtle);
+  --color-border-divider: var(--border-divider);
+  --color-text-primary: var(--text-primary);
+  --color-text-secondary: var(--text-secondary);
+  --color-accent: var(--accent);
+  --color-accent-glow: var(--accent-glow);
+  --color-surface: var(--surface);
+  --color-surface-elevated: var(--surface-elevated);
+  --color-surface-hover: var(--surface-hover);
+  --color-surface-muted: var(--surface-muted);
+  --color-field-bg: var(--field-bg);
+  --color-code-bg: var(--code-bg);
+}
+
 :root {
-  --bg-primary: #050505;
+  --bg-primary: #000000;
   --bg-secondary: #0a0a0a;
-  --bg-card: rgba(10, 10, 10, 0.6);
-  --border-subtle: rgba(255, 255, 255, 0.06);
-  --text-primary: rgba(255, 255, 255, 0.9);
-  --text-secondary: rgba(255, 255, 255, 0.4);
-  --accent: #6366f1;
-  --accent-glow: rgba(99, 102, 241, 0.2);
-  --surface-elevated: rgba(8, 8, 8, 0.82);
-  --surface-muted: rgba(255, 255, 255, 0.04);
-  --field-bg: rgba(0, 0, 0, 0.4);
-  --code-bg: rgba(5, 5, 5, 0.92);
+  --bg-card: #0d0d0d;
+  --border-subtle: #222222;
+  --border-divider: #1a1a1a;
+  --text-primary: #ffffff;
+  --text-secondary: #888888;
+  --accent: #5e6ad2;
+  --accent-glow: rgba(94, 106, 210, 0.4);
+  --surface: #111111;
+  --surface-elevated: #1a1a1a;
+  --surface-hover: #1f1f1f;
+  --surface-muted: #0a0a0a;
+  --field-bg: #141414;
+  --code-bg: #050505;
 }
 
 .light {
-  --bg-primary: #eef1f6;
-  --bg-secondary: #ffffff;
-  --bg-card: rgba(255, 255, 255, 0.72);
-  --border-subtle: rgba(0, 0, 0, 0.08);
-  --text-primary: rgba(0, 0, 0, 0.85);
-  --text-secondary: rgba(0, 0, 0, 0.45);
-  --accent: #6366f1;
-  --accent-glow: rgba(99, 102, 241, 0.15);
-  --surface-elevated: rgba(255, 255, 255, 0.72);
-  --surface-muted: rgba(15, 23, 42, 0.05);
-  --field-bg: rgba(255, 255, 255, 0.58);
-  --code-bg: rgba(248, 250, 252, 0.74);
+  --bg-primary: #ffffff;
+  --bg-secondary: #f9f9f9;
+  --bg-card: #ffffff;
+  --border-subtle: #eaeaea;
+  --border-divider: #f0f0f0;
+  --text-primary: #111111;
+  --text-secondary: #666666;
+  --accent: #5e6ad2;
+  --accent-glow: rgba(94, 106, 210, 0.2);
+  --surface: #f9f9f9;
+  --surface-elevated: #ffffff;
+  --surface-hover: #f0f0f0;
+  --surface-muted: #fbfbfb;
+  --field-bg: #f9f9f9;
+  --code-bg: #f5f5f5;
 }
 
-@keyframes float {
-  0% { transform: translateY(0px) scale(1); }
-  50% { transform: translateY(-20px) scale(1.05); }
-  100% { transform: translateY(0px) scale(1); }
+body {
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
 }
 
-@keyframes sceneDrift {
-  0% { transform: scale(1.04) translate3d(-1.4%, -1%, 0); background-position: 48% 48%; }
-  50% { transform: scale(1.08) translate3d(1.2%, 0.8%, 0); background-position: 53% 51%; }
-  100% { transform: scale(1.04) translate3d(-1.4%, -1%, 0); background-position: 48% 48%; }
+@keyframes slideIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
-@keyframes ambientSweep {
-  0% { transform: translate3d(-9%, -2%, 0) scale(1.05); opacity: 0.35; }
-  45% { transform: translate3d(6%, 2%, 0) scale(1.12); opacity: 0.75; }
-  100% { transform: translate3d(-9%, -2%, 0) scale(1.05); opacity: 0.35; }
-}
-
-@keyframes breathWash {
-  0% { transform: translate3d(-2%, -1%, 0) scale(1); filter: hue-rotate(0deg); }
-  50% { transform: translate3d(2%, 1%, 0) scale(1.04); filter: hue-rotate(8deg); }
-  100% { transform: translate3d(-2%, -1%, 0) scale(1); filter: hue-rotate(0deg); }
-}
-
-@keyframes grainShift {
-  0% { transform: translate3d(0, 0, 0); }
-  25% { transform: translate3d(-1%, 1%, 0); }
-  50% { transform: translate3d(1%, -1%, 0); }
-  75% { transform: translate3d(1%, 1%, 0); }
-  100% { transform: translate3d(0, 0, 0); }
-}
-
-.scriptstack-scene {
-  animation: sceneDrift 36s ease-in-out infinite;
-  will-change: transform, background-position;
-}
-
-.scriptstack-ambient {
-  animation: ambientSweep 18s ease-in-out infinite;
-  will-change: transform, opacity;
-}
-
-.scriptstack-breath {
-  animation: breathWash 22s ease-in-out infinite;
-  will-change: transform, filter;
-}
-
-.scriptstack-breath-reverse {
-  animation: breathWash 28s ease-in-out infinite reverse;
-  will-change: transform, filter;
-}
-
-.scriptstack-grain {
-  background-image:
-    linear-gradient(0deg, rgba(255,255,255,0.08) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255,255,255,0.055) 1px, transparent 1px);
-  background-size: 46px 46px;
-  mask-image: radial-gradient(circle at center, black, transparent 72%);
-  animation: grainShift 9s steps(4, end) infinite;
+.animate-slide-in {
+  animation: slideIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
 .scriptstack-root[data-theme="light"] {
@@ -97,6 +76,11 @@
 
 .scriptstack-root[data-theme="light"] [class*="text-white"] {
   color: rgba(15, 23, 42, 0.72) !important;
+}
+
+.scriptstack-root[data-theme="light"] button[data-variant="primary"],
+.scriptstack-root[data-theme="light"] button[data-variant="primary"] svg {
+  color: #fff !important;
 }
 
 .scriptstack-root[data-theme="light"] h1,
@@ -147,14 +131,14 @@
 .scriptstack-root[data-theme="light"] input,
 .scriptstack-root[data-theme="light"] textarea,
 .scriptstack-root[data-theme="light"] select {
-  color: rgba(15, 23, 42, 0.88) !important;
-  background-color: rgba(255, 255, 255, 0.62) !important;
-  border-color: rgba(15, 23, 42, 0.12) !important;
+  color: rgba(15, 23, 42, 0.95) !important;
+  background-color: var(--field-bg) !important;
+  border-color: var(--border-subtle) !important;
 }
 
 .scriptstack-root[data-theme="light"] input::placeholder,
 .scriptstack-root[data-theme="light"] textarea::placeholder {
-  color: rgba(51, 65, 85, 0.45) !important;
+  color: rgba(71, 85, 105, 0.5) !important;
 }
 
 .scriptstack-root[data-theme="light"] button[class*="bg-indigo"],

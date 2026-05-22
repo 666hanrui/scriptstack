@@ -64,7 +64,9 @@ export default function AuthModal() {
           loggedIn: boolean;
           username?: string;
           token?: string;
-        }>("auth/status", {}, { silent: true });
+          role?: string;
+          isAdmin?: boolean;
+        }>("auth/status", {}, { silent: true, hideGlobalError: true });
         if (!res.loggedIn) {
           if (user) setUser(null);
           setShowModal(true);
@@ -72,6 +74,8 @@ export default function AuthModal() {
           setUser({
             username: res.username || user?.username || "Creator",
             token: res.token || user?.token || "",
+            role: res.role || user?.role || "user",
+            isAdmin: Boolean(res.isAdmin ?? user?.isAdmin),
           });
           setShowModal(false);
         }
@@ -103,6 +107,8 @@ export default function AuthModal() {
         token: string;
         refreshToken?: string;
         username?: string;
+        role?: string;
+        isAdmin?: boolean;
         error?: string;
       }>(action, payload);
 
@@ -118,6 +124,8 @@ export default function AuthModal() {
       setUser({
         username: res.username || username,
         token: res.token,
+        role: res.role || "user",
+        isAdmin: Boolean(res.isAdmin),
       });
       setShowModal(false);
     } catch (err: any) {

@@ -1,6 +1,6 @@
 import React from "react";
 import { useNavigate } from "react-router-dom";
-import { FolderKanban, Sparkles, AlertCircle, FileText, Boxes, Image as ImageIcon, Film, Clapperboard } from "lucide-react";
+import { FolderKanban, Sparkles, AlertCircle, FileText, Boxes, Film, Clapperboard } from "lucide-react";
 import { useAppStore } from "../../store/useAppStore";
 
 interface EmptyStateProps {
@@ -27,8 +27,8 @@ export default function EmptyStateGuide({ type }: EmptyStateProps) {
 
   const description = hasTaskWithoutProject
     ? isZh
-      ? "当前已经有 Script Task，可以继续进入剧本、资产、图像、视频或 Seedance。若要恢复 Step 1-8，请在项目库选择 WORKFLOW 类型项目。"
-      : "A Script Task is selected. You can continue to Scripts, Assets, Image, Video, or Seedance. To restore Step 1-8, select a WORKFLOW project from the project library."
+      ? "当前已经有 Script Task，可以继续进入剧本、资产、视觉工坊、视频或 Seedance。若要恢复 Step 1-8，请在项目库选择 WORKFLOW 类型项目。"
+      : "A Script Task is selected. You can continue to Scripts, Assets, Visual Forge, Video, or Seedance. To restore Step 1-8, select a WORKFLOW project from the project library."
     : hasProjectWithoutTask
       ? isZh
         ? "当前项目还没有绑定 Script Task。请先进入工作流完成 Finalize，或前往剧本任务页生成/导入任务。"
@@ -53,8 +53,8 @@ export default function EmptyStateGuide({ type }: EmptyStateProps) {
           <button onClick={() => navigate("/assets")} className="flex items-center gap-2 px-5 py-3 rounded-xl bg-white/10 hover:bg-white/20 text-white font-bold text-sm border border-white/10 transition-all">
             <Boxes size={16} /> {isZh ? "资产" : "Assets"}
           </button>
-          <button onClick={() => navigate("/image")} className="flex items-center gap-2 px-5 py-3 rounded-xl bg-white/10 hover:bg-white/20 text-white font-bold text-sm border border-white/10 transition-all">
-            <ImageIcon size={16} /> {isZh ? "图像" : "Image"}
+          <button onClick={() => navigate("/visual-prompts")} className="flex items-center gap-2 px-5 py-3 rounded-xl bg-white/10 hover:bg-white/20 text-white font-bold text-sm border border-white/10 transition-all">
+            <Sparkles size={16} /> {isZh ? "视觉工坊" : "Visual Forge"}
           </button>
           <button onClick={() => navigate("/video")} className="flex items-center gap-2 px-5 py-3 rounded-xl bg-white/10 hover:bg-white/20 text-white font-bold text-sm border border-white/10 transition-all">
             <Film size={16} /> {isZh ? "视频" : "Video"}

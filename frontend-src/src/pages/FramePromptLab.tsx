@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Activity, Boxes, CheckCircle2, Clapperboard, FileText, Film, FolderKanban, Image as ImageIcon, Layers3, RefreshCw, Save, Wand2 } from 'lucide-react';
+import { Activity, Boxes, CheckCircle2, Clapperboard, FileText, Film, FolderKanban, Image as ImageIcon, Layers3, RefreshCw, Save, Sparkles, Wand2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import ScriptSelector from '../components/ScriptSelector';
 import { useTudouBridge } from '../hooks/useTudouBridge';
@@ -85,7 +85,8 @@ export default function FramePromptLab() {
   const [reviewFeedback, setReviewFeedback] = useState('');
   const [originalSeedance, setOriginalSeedance] = useState('');
   const [editedSeedanceGroups, setEditedSeedanceGroups] = useState('');
-  const [busy, setBusy] = useState<'load' | 'outline' | 'confirm' | 'all' | 'group' | 'save' | 'quality' | ''>('');
+  const [visualOutputs, setVisualOutputs] = useState<any[]>([]);
+  const [busy, setBusy] = useState<'load' | 'outline' | 'confirm' | 'all' | 'group' | 'save' | 'quality' | 'visual' | ''>('');
   const [error, setError] = useState('');
 
   const selectedTaskId = getTaskId(task) || currentTaskId || '';
@@ -112,6 +113,10 @@ export default function FramePromptLab() {
       setSegmentTitles(Array.isArray(nextTitles) ? nextTitles : []);
       const groups = outputSeedanceGroups(nextOutput);
       setEditedSeedanceGroups(groups.length ? JSON.stringify(groups, null, 2) : '');
+      if (currentProjectId) {
+        const rows = await invoke<any[]>('visual/list-outputs', { projectId: currentProjectId }, { silent: true }).catch(() => []);
+        setVisualOutputs(Array.isArray(rows) ? rows.filter((row) => row.scriptTaskId === taskId || row.script_task_id === taskId) : []);
+      }
     } catch (err: any) {
       setError(err.message || '恢复逐镜提示词链路失败');
     } finally {
@@ -234,21 +239,50 @@ export default function FramePromptLab() {
     }
   };
 
+  const ensureVisualStandards = async () => {
+    if (!selectedTaskId) return setError('请先选择 script task。');
+    setBusy('visual');
+    setError('');
+    try {
+      const rows = await invoke<any[]>('visual/smart-generate-asset-prompt', {
+        taskId: selectedTaskId,
+        assetTypes: ['character', 'scene', 'prop'],
+        mode: 'storyboard',
+      }, { timeout: 900000 });
+      setVisualOutputs((prev) => [...(Array.isArray(rows) ? rows : []), ...prev]);
+      showToast('逐镜视觉标准件已补齐');
+      await refreshAll(selectedTaskId);
+    } catch (err: any) {
+      setError(err.message || '补齐视觉标准件失败');
+    } finally {
+      setBusy('');
+    }
+  };
+
+  const openVisualPrompt = (type = 'shot_keyframe_image') => {
+    const params = new URLSearchParams({
+      assetType: 'shot',
+      shotIndex: String(activeSceneIndex),
+      type,
+    });
+    navigate(`/visual-prompts?${params.toString()}`);
+  };
+
   return (
     <PageShell maxWidth="max-w-full">
       <ModuleHeader
         icon={<Layers3 size={24} />}
         eyebrow="Canonical Frame Prompt Flow"
         title="逐镜分镜提示词 / 原始链路工作台"
-        subtitle="严格对应 23 提示词中的 prompt_segment_planning、prompt_seedance_scene、prompt_review：outline → confirm → run generation → group regeneration → quality check。"
         actions={
           <ActionBar align="right" className="flex-wrap">
             <ActionButton variant="secondary" onClick={() => navigate('/projects')} icon={<FolderKanban size={16} />}>项目库</ActionButton>
             <ActionButton variant="secondary" onClick={() => navigate('/scripts')} icon={<FileText size={16} />}>剧本</ActionButton>
             <ActionButton variant="secondary" onClick={() => navigate('/assets')} disabled={!selectedTaskId} icon={<Boxes size={16} />}>资产</ActionButton>
-            <ActionButton variant="secondary" onClick={() => navigate('/image')} disabled={!selectedTaskId} icon={<ImageIcon size={16} />}>图像</ActionButton>
+            <ActionButton variant="secondary" onClick={() => navigate('/visual-prompts')} disabled={!selectedTaskId} icon={<Sparkles size={16} />}>视觉工坊</ActionButton>
             <ActionButton variant="secondary" onClick={() => navigate('/video')} disabled={!selectedTaskId} icon={<Film size={16} />}>视频</ActionButton>
             <ActionButton variant="secondary" onClick={() => navigate('/seedance')} disabled={!selectedTaskId} icon={<Clapperboard size={16} />}>Seedance</ActionButton>
+            <ActionButton variant="secondary" onClick={() => openVisualPrompt('storyboard_6_panel')} disabled={!selectedTaskId} icon={<Sparkles size={16} />}>视觉工坊</ActionButton>
           </ActionBar>
         }
       />
@@ -258,9 +292,15 @@ export default function FramePromptLab() {
         { label: 'Script Task', value: selectedTaskId || '未选择', copyable: selectedTaskId || undefined, isMono: true },
         { label: 'Outline Shots', value: `${outlineTotal(outline) || 0}` },
         { label: 'Seedance Groups', value: `${seedanceGroups.length}` },
+        { label: '英文视觉标准件', value: `${visualOutputs.length}` },
       ]} />
 
       {error && <div className="rounded-2xl border border-red-500/20 bg-red-500/10 p-4 text-red-200 text-sm">{error}</div>}
+      {selectedTaskId && visualOutputs.length === 0 && (
+        <div className="rounded-2xl border border-yellow-500/20 bg-yellow-500/10 p-4 text-yellow-100 text-sm">
+          逐镜链路现在要求人物、场景、道具视觉锚点来自英文 AIPROMPT。生成 Outline 或单镜前，请先补齐视觉标准件。
+        </div>
+      )}
 
       <div className="grid grid-cols-1 xl:grid-cols-[380px_1fr] gap-6 min-h-0">
         <aside className="space-y-6 min-w-0">
@@ -274,6 +314,7 @@ export default function FramePromptLab() {
                 <ActionButton variant="secondary" onClick={() => refreshAll()} disabled={!selectedTaskId || busy === 'load'} isLoading={busy === 'load'} icon={<RefreshCw size={16} />}>恢复已有输出</ActionButton>
                 <ActionButton onClick={generateOutline} disabled={!selectedTaskId} isLoading={busy === 'outline'} icon={<Wand2 size={16} />}>生成 Outline</ActionButton>
                 <ActionButton variant="secondary" onClick={confirmOutline} disabled={!selectedTaskId || !outline} isLoading={busy === 'confirm'} icon={<CheckCircle2 size={16} />}>确认 Outline</ActionButton>
+                <ActionButton variant="secondary" onClick={ensureVisualStandards} disabled={!selectedTaskId} isLoading={busy === 'visual'} icon={<Sparkles size={16} />}>自动补齐视觉标准件</ActionButton>
                 <ActionButton variant="secondary" onClick={runAll} disabled={!selectedTaskId || !outline} isLoading={busy === 'all'} icon={<Layers3 size={16} />}>全量逐镜生成</ActionButton>
                 <ActionButton variant="secondary" onClick={runQuality} disabled={!selectedTaskId} isLoading={busy === 'quality'} icon={<Activity size={16} />}>质量检查</ActionButton>
               </ActionBar>
@@ -311,7 +352,18 @@ export default function FramePromptLab() {
             )}
           </Panel>
 
-          <Panel title={`单镜生成 / Scene ${activeSceneIndex + 1}`} subtitle="prompt/run-group-generation" actions={<ActionButton onClick={runGroup} disabled={!selectedTaskId || !outline} isLoading={busy === 'group'} icon={<Wand2 size={16} />}>生成当前镜</ActionButton>}>
+          <Panel
+            title={`单镜生成 / Scene ${activeSceneIndex + 1}`}
+            subtitle="prompt/run-group-generation"
+            actions={
+              <ActionBar className="flex-wrap" align="right">
+                <ActionButton variant="secondary" onClick={() => openVisualPrompt('shot_keyframe_image')} disabled={!selectedTaskId} icon={<ImageIcon size={16} />}>关键帧</ActionButton>
+                <ActionButton variant="secondary" onClick={() => openVisualPrompt('storyboard_6_panel')} disabled={!selectedTaskId} icon={<Layers3 size={16} />}>故事版</ActionButton>
+                <ActionButton variant="secondary" onClick={() => openVisualPrompt('video_single_shot')} disabled={!selectedTaskId} icon={<Film size={16} />}>视频提示词</ActionButton>
+                <ActionButton onClick={runGroup} disabled={!selectedTaskId || !outline} isLoading={busy === 'group'} icon={<Wand2 size={16} />}>生成当前镜</ActionButton>
+              </ActionBar>
+            }
+          >
             <div className="grid grid-cols-1 xl:grid-cols-2 gap-5">
               <div className="space-y-4">
                 <FormField label="sceneIndex"><TextInput type="number" value={activeSceneIndex} onChange={(event: any) => setActiveSceneIndex(Math.max(0, Number(event.target.value) || 0))} /></FormField>

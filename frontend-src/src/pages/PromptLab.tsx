@@ -1,4 +1,4 @@
-import { Activity, Boxes, Clapperboard, FileText, Film, FolderKanban, Image as ImageIcon, Layers3, Loader2, Save, Wand2 } from 'lucide-react';
+import { Activity, Boxes, Clapperboard, FileText, Film, FolderKanban, Layers3, Loader2, Save, Sparkles, Wand2 } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import ScriptSelector from '../components/ScriptSelector';
@@ -16,7 +16,7 @@ import FormField, { TextArea, TextInput } from '../components/ui/FormField';
 import ResultViewer from '../components/ui/ResultViewer';
 import Collapsible from '../components/ui/Collapsible';
 
-interface PromptLabProps { kind: 'image' | 'video'; }
+interface PromptLabProps { kind: 'video'; }
 function resultTaskId(result: any) { return result?.taskId || result?.task_id || result?.id || ''; }
 function projectIdOfTask(task: ScriptTask) {
   const anyTask = task as any;
@@ -38,24 +38,23 @@ export default function PromptLab({ kind }: PromptLabProps) {
 
   const [task, setTask] = useState<ScriptTask | null>(null);
   const [sourceText, setSourceText] = useState('');
-  const [style, setStyle] = useState(kind === 'image' ? '电影感、写实、低饱和霓虹、强视觉锚点' : '电影分镜、真实摄影机运动、节奏清晰');
-  const [goal, setGoal] = useState(kind === 'image' ? '输出可直接用于图像模型的分镜提示词' : '输出可直接用于视频模型的镜头提示词');
+  const [style, setStyle] = useState('电影分镜、真实摄影机运动、节奏清晰');
+  const [goal, setGoal] = useState('输出可直接用于视频模型的镜头提示词');
   const [result, setResult] = useState<PromptResult | null>(null);
   const [review, setReview] = useState<ReviewResult | null>(null);
   const [busy, setBusy] = useState<'generate' | 'review' | ''>('');
   const [error, setError] = useState('');
 
   useEffect(() => {
-    setRealm(kind === 'image' ? 'samurai' : 'valley');
-    setStyle(kind === 'image' ? '电影感、写实、低饱和霓虹、强视觉锚点' : '电影分镜、真实摄影机运动、节奏清晰');
-    setGoal(kind === 'image' ? '输出可直接用于图像模型的分镜提示词' : '输出可直接用于视频模型的镜头提示词');
+    setRealm('valley');
+    setStyle('电影分镜、真实摄影机运动、节奏清晰');
+    setGoal('输出可直接用于视频模型的镜头提示词');
     setResult(null);
     setReview(null);
     setError('');
   }, [kind, setRealm]);
 
   const sections = useMemo(() => promptSections(result), [result]);
-  const Icon = kind === 'image' ? ImageIcon : Film;
   const sourceScriptTaskId = getTaskId(task) || currentTaskId || '';
   const generatedPromptTaskId = resultTaskId(result);
   const reviewStatus = review ? `${review.score ?? 'N/A'} · ${review.status || 'done'}` : '未审核';
@@ -80,12 +79,10 @@ export default function PromptLab({ kind }: PromptLabProps) {
     setError('');
     setReview(null);
     try {
-      const payload = kind === 'image'
-        ? { mode: 'single', sourceScript: sourceText, visualStyle: style, imageGoal: goal, existingTaskId: generatedPromptTaskId || undefined, existingProjectId: currentProjectId || undefined, sourceScriptTaskId }
-        : { mode: 'beat', scriptBeats: sourceText, videoStyle: style, motionFocus: goal, existingTaskId: generatedPromptTaskId || undefined, existingProjectId: currentProjectId || undefined, sourceScriptTaskId };
-      const next = await invoke<PromptResult>(kind === 'image' ? 'prompt/image' : 'prompt/video', payload, { timeout: 900000 });
+      const payload = { mode: 'beat', scriptBeats: sourceText, videoStyle: style, motionFocus: goal, existingTaskId: generatedPromptTaskId || undefined, existingProjectId: currentProjectId || undefined, sourceScriptTaskId };
+      const next = await invoke<PromptResult>('prompt/video', payload, { timeout: 900000 });
       setResult(next);
-      showToast(`${kind === 'image' ? '图像' : '视频'}提示词已生成`);
+      showToast('视频提示词已生成');
     } catch (err: any) {
       setError(err.message || '提示词生成失败');
     } finally {
@@ -98,7 +95,7 @@ export default function PromptLab({ kind }: PromptLabProps) {
     setBusy('review');
     setError('');
     try {
-      const next = await invoke<ReviewResult>(kind === 'image' ? 'prompt/image-review' : 'prompt/video-review', { taskId: generatedPromptTaskId }, { timeout: 900000 });
+      const next = await invoke<ReviewResult>('prompt/video-review', { taskId: generatedPromptTaskId }, { timeout: 900000 });
       setReview(next);
       showToast('提示词审核完成');
     } catch (err: any) {
@@ -108,14 +105,20 @@ export default function PromptLab({ kind }: PromptLabProps) {
     }
   };
 
+  const openVisualPrompt = () => {
+    const params = new URLSearchParams({
+      type: 'video_single_shot',
+    });
+    navigate(`/visual-prompts?${params.toString()}`);
+  };
+
   return (
     <PageShell maxWidth="max-w-full">
       <ModuleHeader
-        icon={<Icon size={24} />}
+        icon={<Film size={24} />}
         eyebrow="Canonical Independent Prompt Flow"
-        title={kind === 'image' ? '图像提示词 / 验收工作台' : '视频提示词 / 验收工作台'}
-        subtitle={kind === 'image' ? '严格对应 image_prompt_generation + prompt_review。逐镜分镜请进入原始逐镜链路工作台。' : '严格对应 video_prompt_generation + prompt_review。逐镜分镜请进入原始逐镜链路工作台。'}
-        actions={<ActionBar align="right" className="flex-wrap"><ActionButton variant="secondary" onClick={() => navigate('/projects')} icon={<FolderKanban size={16} />}>项目库</ActionButton><ActionButton variant="secondary" onClick={() => navigate('/scripts')} icon={<FileText size={16} />}>剧本</ActionButton><ActionButton variant="secondary" onClick={() => navigate('/assets')} disabled={!sourceScriptTaskId} icon={<Boxes size={16} />}>资产</ActionButton><ActionButton variant="secondary" onClick={() => navigate(kind === 'image' ? '/video' : '/image')} disabled={!sourceScriptTaskId} icon={kind === 'image' ? <Film size={16} /> : <ImageIcon size={16} />}>{kind === 'image' ? '视频' : '图像'}</ActionButton><ActionButton variant="secondary" onClick={() => navigate('/frame-prompt')} disabled={!sourceScriptTaskId} icon={<Layers3 size={16} />}>逐镜</ActionButton><ActionButton variant="secondary" onClick={() => navigate('/seedance')} disabled={!sourceScriptTaskId} icon={<Clapperboard size={16} />}>Seedance</ActionButton></ActionBar>}
+        title="视频提示词 / 验收工作台"
+        actions={<ActionBar align="right" className="flex-wrap"><ActionButton variant="secondary" onClick={() => navigate('/projects')} icon={<FolderKanban size={16} />}>项目库</ActionButton><ActionButton variant="secondary" onClick={() => navigate('/scripts')} icon={<FileText size={16} />}>剧本</ActionButton><ActionButton variant="secondary" onClick={() => navigate('/assets')} disabled={!sourceScriptTaskId} icon={<Boxes size={16} />}>资产</ActionButton><ActionButton variant="secondary" onClick={() => navigate('/video')} disabled={!sourceScriptTaskId} icon={<Film size={16} />}>视频</ActionButton><ActionButton variant="secondary" onClick={() => navigate('/frame-prompt')} disabled={!sourceScriptTaskId} icon={<Layers3 size={16} />}>逐镜</ActionButton><ActionButton variant="secondary" onClick={() => navigate('/seedance')} disabled={!sourceScriptTaskId} icon={<Clapperboard size={16} />}>Seedance</ActionButton><ActionButton variant="secondary" onClick={openVisualPrompt} disabled={!sourceScriptTaskId} icon={<Sparkles size={16} />}>视觉工坊</ActionButton></ActionBar>}
       />
 
       <ContextMetricGrid metrics={[{ label: 'Project', value: currentProjectId || '未绑定', copyable: currentProjectId || undefined, isMono: true }, { label: 'Source Task', value: sourceScriptTaskId || '未选择', copyable: sourceScriptTaskId || undefined, isMono: true }, { label: 'Prompt Task', value: generatedPromptTaskId || '未生成', copyable: generatedPromptTaskId || undefined, isMono: true }, { label: '审核状态', value: reviewStatus }]} />
@@ -128,12 +131,12 @@ export default function PromptLab({ kind }: PromptLabProps) {
           <Panel title="源剧本正文" subtitle={`长度 ${sourceText.trim().length} · 结果段落 ${sections.length}`}><TextArea value={sourceText} onChange={(event: any) => setSourceText(event.target.value)} rows={4} /></Panel>
         </aside>
         <main className="space-y-6 min-w-0">
-          <Panel title={kind === 'image' ? '独立图像提示词' : '独立视频提示词'} subtitle={outputStatus}
-            footer={<ActionBar><ActionButton onClick={generate} disabled={!sourceText.trim()} isLoading={busy === 'generate'} icon={<Wand2 size={16} />}>生成提示词</ActionButton><ActionButton variant="secondary" onClick={runReview} disabled={!generatedPromptTaskId} isLoading={busy === 'review'} icon={<Activity size={16} />}>审核</ActionButton><ActionButton variant="secondary" onClick={() => navigate('/frame-prompt')} disabled={!sourceScriptTaskId} icon={<Layers3 size={16} />}>进入逐镜链路</ActionButton></ActionBar>}>
+          <Panel title="独立视频提示词" subtitle={outputStatus}
+            footer={<ActionBar><ActionButton onClick={generate} disabled={!sourceText.trim()} isLoading={busy === 'generate'} icon={<Wand2 size={16} />}>生成提示词</ActionButton><ActionButton variant="secondary" onClick={runReview} disabled={!generatedPromptTaskId} isLoading={busy === 'review'} icon={<Activity size={16} />}>审核</ActionButton><ActionButton variant="secondary" onClick={() => navigate('/frame-prompt')} disabled={!sourceScriptTaskId} icon={<Layers3 size={16} />}>进入逐镜链路</ActionButton><ActionButton variant="secondary" onClick={openVisualPrompt} disabled={!sourceScriptTaskId} icon={<Sparkles size={16} />}>复制型视觉模板</ActionButton></ActionBar>}>
             <Collapsible title="风格参数" subtitle="Visual Style / Motion Focus">
               <div className="space-y-4">
-                <FormField label={kind === 'image' ? 'Visual Style' : 'Video Style'}><TextInput value={style} onChange={(event: any) => setStyle(event.target.value)} /></FormField>
-                <FormField label={kind === 'image' ? 'Image Goal' : 'Motion Focus'}><TextInput value={goal} onChange={(event: any) => setGoal(event.target.value)} /></FormField>
+                <FormField label="Video Style"><TextInput value={style} onChange={(event: any) => setStyle(event.target.value)} /></FormField>
+                <FormField label="Motion Focus"><TextInput value={goal} onChange={(event: any) => setGoal(event.target.value)} /></FormField>
               </div>
             </Collapsible>
           </Panel>

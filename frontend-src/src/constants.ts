@@ -27,15 +27,17 @@ export const WORKFLOW_STEPS: WorkflowStep[] = [
 
 export const NAV_ITEMS: NavItem[] = [
   { id: "hub", label: "灵感枢纽", eyebrow: "Genesis", realm: "cloudcity" },
+  { id: "longform", label: "长故事", eyebrow: "Longform", realm: "cloudcity" },
   { id: "workflow", label: "剧本工作流", eyebrow: "Screenplay", realm: "valley" },
   { id: "scripts", label: "剧本任务", eyebrow: "Script Tasks", realm: "valley" },
   { id: "assets", label: "资产锻造", eyebrow: "Assets", realm: "samurai" },
-  { id: "image", label: "图像提示词", eyebrow: "Image Prompt", realm: "samurai" },
+  { id: "visual-prompts", label: "视觉提示词", eyebrow: "Visual Forge", realm: "samurai" },
   { id: "video", label: "视频提示词", eyebrow: "Video Prompt", realm: "valley" },
   { id: "frame-prompt", label: "逐镜提示词", eyebrow: "Frame Prompt", realm: "valley" },
   { id: "seedance", label: "Seedance", eyebrow: "Shot Units", realm: "valley" },
   { id: "projects", label: "项目库", eyebrow: "Archive", realm: "cloudcity" },
-  { id: "settings", label: "本地设置", eyebrow: "Local Core", realm: "cloudcity" },
+  { id: "admin", label: "管理员后台", eyebrow: "Admin", realm: "cloudcity" },
+  { id: "settings", label: "模型与 API", eyebrow: "Server Core", realm: "cloudcity" },
 ];
 
 export const IPC_TIMEOUTS = {
@@ -51,12 +53,13 @@ export const UI_DEFAULTS = {
 
 export const NAV_ROUTES = [
   { path: '/', label: '灵感枢纽', icon: 'Sparkles' },
+  { path: '/longform', label: '长故事', icon: 'BookOpen' },
   { path: '/workflow', label: '工作流', icon: 'RouteIcon' },
   { path: '/scripts', label: '剧本任务', icon: 'FileText' },
   { path: '/assets', label: '资产矩阵', icon: 'Library' },
-  { path: '/image', label: '图像提示词', icon: 'ImageIcon' },
   { path: '/video', label: '视频提示词', icon: 'Film' },
-  { path: '/seedance', label: 'Seedance', icon: 'Clapperboard' },
   { path: '/frame-prompt', label: '逐帧', icon: 'LayoutPanelTop' },
+  { path: '/seedance', label: 'Seedance', icon: 'Clapperboard' },
+  { path: '/visual-prompts', label: '视觉提示词', icon: 'Sparkles' },
   { path: '/projects', label: '项目库', icon: 'FolderKanban' },
 ] as const;

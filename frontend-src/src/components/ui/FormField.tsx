@@ -9,13 +9,13 @@ interface FormFieldProps {
 
 export default function FormField({ label, helperText, children, className = '' }: FormFieldProps) {
   return (
-    <div className={`flex flex-col gap-2 ${className}`}>
-      <label className="text-xs font-bold text-white/70 tracking-widest uppercase ml-1">
+    <div className={`flex flex-col gap-2.5 ${className}`}>
+      <label className="text-xs font-bold text-[var(--text-secondary)] tracking-wider uppercase ml-1">
         {label}
       </label>
       {children}
       {helperText && (
-        <span className="text-[10px] text-white/30 ml-1 leading-relaxed">
+        <span className="text-[11px] text-[var(--text-secondary)] opacity-80 ml-1 leading-relaxed font-medium">
           {helperText}
         </span>
       )}
@@ -30,7 +30,7 @@ export const TextInput = forwardRef<HTMLInputElement, TextInputProps>(
     return (
       <input
         ref={ref}
-        className={`w-full bg-black/40 border border-white/10 rounded-xl px-4 py-2.5 text-white/90 text-sm focus:outline-none focus:border-indigo-500/50 focus:ring-1 focus:ring-indigo-500/50 transition-all font-mono disabled:opacity-50 ${className}`}
+        className={`w-full bg-[var(--field-bg)] border border-[var(--border-subtle)] rounded-xl px-4 py-2.5 text-[var(--text-primary)] text-sm focus:outline-none focus:border-[var(--accent)] focus:ring-2 focus:ring-[var(--accent-glow)] focus:bg-[var(--surface-muted)] hover:border-[var(--border-divider)] transition-all font-mono disabled:opacity-50 shadow-sm ${className}`}
         {...rest}
       />
     );
@@ -46,7 +46,7 @@ export const TextArea = forwardRef<HTMLTextAreaElement, TextAreaProps>(
       <textarea
         ref={ref}
         rows={rows}
-        className={`w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-white/90 text-sm focus:outline-none focus:border-indigo-500/50 focus:ring-1 focus:ring-indigo-500/50 transition-all font-serif resize-y custom-scrollbar disabled:opacity-50 ${className}`}
+        className={`w-full bg-[var(--field-bg)] border border-[var(--border-subtle)] rounded-xl px-4 py-3 text-[var(--text-primary)] text-sm focus:outline-none focus:border-[var(--accent)] focus:ring-2 focus:ring-[var(--accent-glow)] focus:bg-[var(--surface-muted)] hover:border-[var(--border-divider)] transition-all font-serif resize-y custom-scrollbar disabled:opacity-50 shadow-sm ${className}`}
         {...rest}
       />
     );
@@ -61,7 +61,7 @@ export const SelectInput = forwardRef<HTMLSelectElement, SelectInputProps>(
     return (
       <select
         ref={ref}
-        className={`w-full bg-black/40 border border-white/10 rounded-xl px-4 py-2.5 text-white/90 text-sm focus:outline-none focus:border-indigo-500/50 focus:ring-1 focus:ring-indigo-500/50 transition-all font-sans disabled:opacity-50 ${className}`}
+        className={`w-full bg-[var(--field-bg)] border border-[var(--border-subtle)] rounded-xl px-4 py-2.5 text-[var(--text-primary)] text-sm focus:outline-none focus:border-[var(--accent)] focus:ring-2 focus:ring-[var(--accent-glow)] focus:bg-[var(--surface-muted)] hover:border-[var(--border-divider)] transition-all font-sans disabled:opacity-50 shadow-sm appearance-none ${className}`}
         {...rest}
       >
         {children}

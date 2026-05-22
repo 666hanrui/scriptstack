@@ -3,16 +3,25 @@
   "private": true,
   "scripts": {
     "frontend:build": "vite build --config frontend-src/vite.config.ts",
+    "frontend:build:remote": "node scripts/build-frontend-remote.mjs",
     "frontend:dev": "vite --config frontend-src/vite.config.ts --host 127.0.0.1 --port 5173",
+    "frontend:dev:remote": "node scripts/frontend-remote-dev.mjs",
     "frontend:typecheck": "tsc -p frontend-src/tsconfig.json --noEmit",
     "prompt:manifest": "node scripts/generate-prompt-manifest.mjs",
     "audit:canonical-flow": "node scripts/audit-canonical-flow.mjs",
     "audit:local-only": "node scripts/audit-local-only.mjs",
-    "tauri": "tauri"
+    "tauri": "tauri",
+    "tauri:dev:remote": "node scripts/tauri-remote-dev.mjs",
+    "tauri:build:remote": "node scripts/tauri-remote-build.mjs",
+    "tauri:build:remote:mac-arm": "node scripts/tauri-remote-build.mjs --target aarch64-apple-darwin",
+    "tauri:build:remote:mac-intel": "node scripts/tauri-remote-build.mjs --target x86_64-apple-darwin",
+    "tauri:build:remote:mac-universal": "node scripts/tauri-remote-build.mjs --target universal-apple-darwin",
+    "tauri:build:remote:windows-x64": "node scripts/tauri-remote-build.mjs --target x86_64-pc-windows-msvc",
+    "tauri:build:remote:windows-arm64": "node scripts/tauri-remote-build.mjs --target aarch64-pc-windows-msvc"
   },
   "devDependencies": {
     "@tailwindcss/vite": "^4.3.0",
-    "@tauri-apps/cli": "^2.10.1",
+    "@tauri-apps/cli": "^2.11.2",
     "@types/react": "^18.3.28",
     "@types/react-dom": "^18.3.7",
     "@vitejs/plugin-react": "^6.0.1",
@@ -21,7 +30,7 @@
     "vite": "^8.0.12"
   },
   "dependencies": {
-    "@tauri-apps/api": "^2.10.1",
+    "@tauri-apps/api": "^2.11.0",
     "framer-motion": "^12.38.0",
     "lucide-react": "^1.16.0",
     "react": "^18.3.1",

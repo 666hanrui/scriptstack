@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
-import { AlertTriangle, Boxes, CheckCircle2, Circle, Clapperboard, FileText, Film, FolderKanban, Image as ImageIcon, Loader2, Stethoscope, Wand2 } from 'lucide-react';
+import { AlertTriangle, Boxes, CheckCircle2, Circle, Clapperboard, FileText, Film, FolderKanban, Loader2, Sparkles, Stethoscope, Wand2 } from 'lucide-react';
 import { useAppStore } from '../store/useAppStore';
 import StepEngine from '../components/workflow/StepEngine';
 import AiDoctorPanel from '../components/workflow/AiDoctorPanel';
@@ -198,12 +198,12 @@ export default function WorkflowValley() {
       <PageShell maxWidth="max-w-5xl">
         <Panel title="已选择剧本任务，但没有工作流项目" subtitle="Task Handoff" actions={<FileText size={18} className="text-cyan-300" />}>
           <div className="space-y-6">
-            <p className="text-white/60 text-sm leading-6">当前页面已经接收到 Script Task，但八步工作流只能恢复 screenplay 工作流项目。这个任务可以继续进入剧本、资产、图像、视频和 Seedance；如果要恢复 Step 1-8，请在项目库选择 WORKFLOW 类型项目。</p>
+            <p className="text-white/60 text-sm leading-6">当前页面已经接收到 Script Task，但八步工作流只能恢复 screenplay 工作流项目。这个任务可以继续进入剧本、资产、视觉工坊、视频和 Seedance；如果要恢复 Step 1-8，请在项目库选择 WORKFLOW 类型项目。</p>
             <ContextMetricGrid metrics={[{ label: 'Script Task', value: shortId(currentTaskId), copyable: currentTaskId, isMono: true }, { label: 'Project', value: '未绑定工作流项目' }, { label: '推荐入口', value: '后期链路' }, { label: 'Workflow', value: '需 WORKFLOW 项目' }]} />
             <ActionBar className="flex-wrap">
               <ActionButton onClick={() => navigate('/scripts')} icon={<FileText size={16} />}>进入剧本任务</ActionButton>
               <ActionButton variant="secondary" onClick={() => navigate('/assets')} icon={<Boxes size={16} />}>资产</ActionButton>
-              <ActionButton variant="secondary" onClick={() => navigate('/image')} icon={<ImageIcon size={16} />}>图像</ActionButton>
+              <ActionButton variant="secondary" onClick={() => navigate('/visual-prompts')} icon={<Sparkles size={16} />}>视觉工坊</ActionButton>
               <ActionButton variant="secondary" onClick={() => navigate('/video')} icon={<Film size={16} />}>视频</ActionButton>
               <ActionButton variant="secondary" onClick={() => navigate('/seedance')} icon={<Clapperboard size={16} />}>Seedance</ActionButton>
               <ActionButton variant="ghost" onClick={() => navigate('/projects')} icon={<FolderKanban size={16} />}>去项目库找 WORKFLOW</ActionButton>
@@ -235,7 +235,6 @@ export default function WorkflowValley() {
         icon={<Wand2 size={24} />}
         eyebrow="Canonical Screenplay Flow"
         title="八步工作流 / 剧本生成引擎"
-        subtitle="严格对应 screenplay_step 1-8、screenplay_selfcheck、screenplay_checkpoint。StepEngine 负责生成、自检、保存覆写、checkpoint 与 finalize。"
         actions={
           <ActionBar align="right" className="flex-wrap">
             <ActionButton variant="secondary" onClick={() => navigate('/projects')} icon={<FolderKanban size={16} />}>项目库</ActionButton>

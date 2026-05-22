@@ -1,6 +1,6 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { FolderKanban, FileText, Library, Image as ImageIcon, Film, Clapperboard, LayoutPanelTop } from 'lucide-react';
+import { FolderKanban, FileText, Library, Film, Clapperboard, LayoutPanelTop, Sparkles } from 'lucide-react';
 import ActionBar, { ActionButton } from '../ui/ActionBar';
 import PageShell from '../ui/PageShell';
 import { useAppStore } from '../../store/useAppStore';
@@ -35,8 +35,8 @@ export default function DetailLayout({ sidebar, children }: DetailLayoutProps) {
               <ActionButton size="sm" variant="secondary" disabled={!hasTask} icon={<Library size={14} />} onClick={() => navigate('/assets')}>
                 资产
               </ActionButton>
-              <ActionButton size="sm" variant="secondary" disabled={!hasTask} icon={<ImageIcon size={14} />} onClick={() => navigate('/image')}>
-                图像
+              <ActionButton size="sm" variant="secondary" disabled={!hasTask} icon={<Sparkles size={14} />} onClick={() => navigate('/visual-prompts')}>
+                视觉工坊
               </ActionButton>
               <ActionButton size="sm" variant="secondary" disabled={!hasTask} icon={<Film size={14} />} onClick={() => navigate('/video')}>
                 视频

@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, useAnimation } from 'framer-motion';
-import { CornerDownLeft, FileText, FolderKanban, Sparkles, Wand2 } from 'lucide-react';
+import { BookOpen, CornerDownLeft, FileText, FolderKanban, Sparkles, Upload, Wand2 } from 'lucide-react';
 import { useAppStore } from '../store/useAppStore';
 import { useTudouBridge } from '../hooks/useTudouBridge';
 import PageShell from '../components/ui/PageShell';
@@ -46,6 +46,7 @@ export default function InspirationHub() {
   const [chinese, setChinese] = useState(true);
   const [master, setMaster] = useState('');
   const [importedScript, setImportedScript] = useState('');
+  const [importedFile, setImportedFile] = useState<any>(null);
   const [error, setError] = useState('');
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const controls = useAnimation();
@@ -62,6 +63,20 @@ export default function InspirationHub() {
     setGenres((prev) => prev.includes(genre) ? prev.filter((item) => item !== genre) : [...prev, genre]);
   };
 
+  const selectImportFile = async () => {
+    setError('');
+    try {
+      const picked = await invoke<any>('select_text_file', {}, { timeout: 900000 });
+      if (picked?.cancelled) return;
+      setImportedFile(picked);
+      setImportedScript(picked.content || '');
+      if (!name.trim() && picked.fileName) setName(String(picked.fileName).replace(/\.[^.]+$/, '').slice(0, 30));
+      showToast({ message: `已读取文件：${picked.fileName || '未命名文件'}`, type: 'success' });
+    } catch (err: any) {
+      setError(err.message || '选择文件失败');
+    }
+  };
+
   const handleIgnite = async () => {
     if (!canStart) return;
     setError('');
@@ -75,6 +90,7 @@ export default function InspirationHub() {
       chinese,
       master: master.trim() || undefined,
       importedScript: importedScript.trim() || undefined,
+      importedFileName: importedFile?.fileName,
       path: importedScript.trim() ? 'import' : 'new',
     };
 
@@ -101,10 +117,10 @@ export default function InspirationHub() {
           icon={<Sparkles size={26} />}
           eyebrow="Inspiration Hub"
           title="新建工作流"
-          subtitle="输入核心概念或导入已有剧本，创建一个可恢复、可 finalize、可承接资产与 PromptLab 的工作流项目。"
           actions={
             <ActionBar align="right" className="flex-wrap">
               <ActionButton variant="secondary" onClick={() => navigate('/projects')} icon={<FolderKanban size={16} />}>项目库</ActionButton>
+              <ActionButton variant="secondary" onClick={() => navigate('/longform')} icon={<BookOpen size={16} />}>长故事</ActionButton>
               <ActionButton variant="secondary" onClick={() => navigate('/scripts')} icon={<FileText size={16} />}>剧本任务</ActionButton>
               <ActionButton onClick={handleIgnite} disabled={!canStart || isLoading} isLoading={isLoading} icon={<Wand2 size={16} />}>开始推演</ActionButton>
             </ActionBar>
@@ -128,10 +144,26 @@ export default function InspirationHub() {
               </FormField>
             </Panel>
 
-            <Panel title="导入剧本">
-              <FormField label="剧本正文">
-                <TextArea value={importedScript} onChange={(event: any) => setImportedScript(event.target.value)} rows={3} placeholder="可选：粘贴已有剧本，项目会以 import 路径启动。" />
-              </FormField>
+            <Panel
+              title="导入剧本"
+              actions={<ActionButton size="sm" variant="secondary" onClick={selectImportFile} icon={<Upload size={14} />}>选择文件</ActionButton>}
+            >
+               <FormField label="剧本正文">
+                 <TextArea value={importedScript} onChange={(event: any) => setImportedScript(event.target.value)} rows={3} placeholder="粘贴单集内容，流程将从第 1 步破题开始。" />
+                 {importedScript.length > 0 && (
+                   <div className={`mt-1.5 text-xs ${importedScript.length > 15000 ? 'text-yellow-400' : 'text-white/30'}`}>
+                     字数: {importedScript.length.toLocaleString()}
+                     {importedScript.length > 15000 && (
+                       <span className="ml-2">⚠ 文本较长（约 {importedScript.length.toLocaleString()} 字），建议分章节粘贴</span>
+                     )}
+                   </div>
+                 )}
+               </FormField>
+              {importedFile && (
+                <div className="mt-3 rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2 text-xs text-white/50">
+                  {importedFile.fileName || '已选择文件'} · {importedFile.materialType || 'mixed'} · {importedFile.encoding || 'unknown'}
+                </div>
+              )}
             </Panel>
           </main>
 

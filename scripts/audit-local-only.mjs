@@ -44,9 +44,19 @@ function lineNumber(text, index) {
 }
 
 function isAllowedUrl(rel, url) {
+  if (rel.endsWith("audit-local-only.mjs")) return true;
   if (rel.startsWith("docs/")) return true;
   if (rel.startsWith("src-tauri/gen/")) return true;
   if (url.startsWith("http://127.0.0.1") || url.startsWith("http://localhost")) return true;
+  if (rel === "frontend-src/src/pages/Settings.tsx" && (
+    url === "https://api.deepseek.com/v1" ||
+    url === "https://api.openai.com/v1" ||
+    url === "https://api.anthropic.com/v1" ||
+    url === "https://generativelanguage.googleapis.com/v1beta" ||
+    url === "https://openrouter.ai/api/v1" ||
+    url === "https://dashscope.aliyuncs.com/compatible-mode/v1"
+  )) return true;
+  if (rel === "src-tauri/src/db/crud.rs" && url.startsWith("https://example.com/")) return true;
   if (url.includes("github.com/") || url.includes("raw.githubusercontent.com/")) return true;
   if (url.includes("docs.github.com/")) return true;
   if (url === "http://www.w3.org/2000/svg") return true;

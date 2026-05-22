@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, Send, Activity, Terminal } from "lucide-react";
-import { listen } from "@tauri-apps/api/event";
+import { listenEvent } from "../../lib/event-bridge";
 import { useTudouBridge } from "../../hooks/useTudouBridge";
 import { useAppStore } from "../../store/useAppStore";
 
@@ -29,8 +29,9 @@ export default function AiDoctorPanel() {
   }, [logs, isDoctorPanelOpen]);
 
   useEffect(() => {
-    const unlisten = listen("doctor:stream-chunk", (event: any) => {
-      const { chunk, projectId } = event.payload || {};
+    let cleanup: (() => void) | null = null;
+    listenEvent("doctor:stream-chunk", (payload: any) => {
+      const { chunk, projectId } = payload || {};
       if (projectId && currentWorkflowProjectId && projectId !== currentWorkflowProjectId) return;
       setLogs((prev) => {
         const newLogs = [...prev];
@@ -39,9 +40,9 @@ export default function AiDoctorPanel() {
         else newLogs.push({ role: "doc", text: chunk });
         return newLogs;
       });
-    });
+    }).then((fn) => { cleanup = fn; });
     return () => {
-      unlisten.then((fn) => fn());
+      if (cleanup) cleanup();
     };
   }, [currentWorkflowProjectId]);
 

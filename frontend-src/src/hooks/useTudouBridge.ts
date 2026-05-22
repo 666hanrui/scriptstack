@@ -1,8 +1,9 @@
 import { useState, useCallback, useRef } from "react";
-import { invoke as tauriInvoke } from "@tauri-apps/api/core";
 import { useAppStore } from "../store/useAppStore";
+import { httpInvoke, streamInvoke, authLogin, authRegister, authStatus, authRefresh } from "../lib/api-client";
+import { emitBridgeEvent } from "../lib/event-bridge";
 
-type Payload = Record<string, any>;
+export type Payload = Record<string, any>;
 type WrapKind = "raw" | "payload" | "init" | "taskId" | "projectId" | "projectRename" | "scriptBody" | "authToken" | "authRefresh" | "doctor" | "updatePromptOutput";
 
 interface CommandSpec {
@@ -25,6 +26,7 @@ const COMMAND_SPECS: Record<string, CommandSpec> = {
   "prompt/flow-contract": { command: "get_prompt_flow_contract", wrap: "raw" },
   "test_connection": { command: "test_connection", wrap: "payload" },
   "get_database_meta": { command: "get_database_meta", wrap: "raw" },
+  "admin/summary": { command: "admin_summary", wrap: "raw" },
   "get_prompt_flow_contract": { command: "get_prompt_flow_contract", wrap: "raw" },
 
   "project/create": { command: "screenplay_create_project", wrap: "init" },
@@ -64,9 +66,23 @@ const COMMAND_SPECS: Record<string, CommandSpec> = {
   "script/update-body": { command: "update_script_body", wrap: "scriptBody" },
   "script/review": { command: "run_script_review", wrap: "payload" },
 
+  "series/create": { command: "create_series_project", wrap: "payload" },
+  "series/incubate-idea": { command: "longform_incubate_idea", wrap: "payload" },
+  "source/import-file": { command: "import_source_file", wrap: "payload" },
+  "source/list": { command: "list_source_materials", wrap: "payload" },
+  "source/segment": { command: "segment_source_material", wrap: "payload" },
+  "source/confirm-chunks": { command: "confirm_source_chunks", wrap: "payload" },
+  "source/list-chunks": { command: "list_source_chunks", wrap: "payload" },
+  "episode/create-from-sources": { command: "create_episode_from_sources", wrap: "payload" },
+  "episode/list": { command: "list_series_episodes", wrap: "payload" },
+  "episode/snapshot": { command: "generate_episode_snapshot", wrap: "payload" },
+  "episode/next-options": { command: "generate_next_episode_options", wrap: "payload" },
+
   "asset/extract": { command: "run_asset_extraction", wrap: "payload" },
   "asset/get-all": { command: "get_assets_by_task", wrap: "taskId" },
   "asset/update": { command: "update_assets", wrap: "raw" },
+  "asset-sheet/plan": { command: "create_asset_sheet_plan", wrap: "payload" },
+  "asset-sheet/crop": { command: "crop_asset_sheet", wrap: "payload" },
 
   "prompt/image": { command: "run_image_generation", wrap: "payload" },
   "prompt/video": { command: "run_video_generation", wrap: "payload" },
@@ -99,6 +115,27 @@ const COMMAND_SPECS: Record<string, CommandSpec> = {
   "seedance/get-unit": { command: "seedance_get_unit", wrap: "payload" },
   "seedance/run-unit": { command: "seedance_run_unit", wrap: "payload" },
   "seedance/run-all": { command: "seedance_run_all", wrap: "payload" },
+
+  "visual/save-output": { command: "visual_save_output", wrap: "payload" },
+  "visual/list-outputs": { command: "visual_list_outputs", wrap: "payload" },
+  "visual/delete-output": { command: "visual_delete_output", wrap: "payload" },
+  "visual/update-output-meta": { command: "visual_update_output_meta", wrap: "payload" },
+  "visual/mark-copied": { command: "visual_mark_copied", wrap: "payload" },
+  "visual/smart-generate-asset-prompt": { command: "visual_smart_generate_asset_prompt", wrap: "payload" },
+  "visual/import-external-templates": { command: "visual_import_external_templates", wrap: "raw" },
+  "visual/search-templates": { command: "visual_search_templates", wrap: "payload" },
+  "visual/get-template": { command: "visual_get_template", wrap: "payload" },
+  "visual/export-markdown": { command: "visual_export_markdown", wrap: "payload" },
+  "visual/export-json": { command: "visual_export_json", wrap: "payload" },
+  "visual/batch-generate": { command: "visual_batch_generate", wrap: "payload" },
+
+  "asset-image/save": { command: "asset_image_save", wrap: "payload" },
+  "asset-image/save-file": { command: "asset_image_save_file", wrap: "payload" },
+  "asset-image/list": { command: "asset_image_list", wrap: "payload" },
+  "asset-image/delete": { command: "asset_image_delete", wrap: "payload" },
+  "asset-image/update": { command: "asset_image_update", wrap: "payload" },
+
+  "storyboard/export-local": { command: "export_storyboard_bundle", wrap: "payload" },
 };
 
 function pick(payload: Payload, camel: string, snake?: string) {
@@ -174,6 +211,51 @@ function isTauriRuntime() {
   return typeof (window as any).__TAURI_INTERNALS__ !== 'undefined';
 }
 
+const DESKTOP_ONLY_COMMANDS = new Set([
+  "export_storyboard_bundle",
+]);
+
+const STREAM_COMMANDS = new Set([
+  "screenplay_generate_step",
+  "screenplay_selfcheck_step",
+  "screenplay_regenerate_checkpoint",
+  "save_script_generation",
+]);
+
+/**
+ * 将 Tauri IPC 的 wrapArgs 格式展平为统一的 args 对象（给 HTTP /api/invoke 用）
+ * Tauri 需要 `{ payload: {...} }` 的格式，但 HTTP invoke 直接用 args 内容
+ */
+function flattenForHttp(wrapped: Record<string, any>): Record<string, any> {
+  // 如果 wrapped 里只有一个 payload/init key，展平它
+  if (wrapped.payload && typeof wrapped.payload === "object" && Object.keys(wrapped).length === 1) {
+    return wrapped.payload;
+  }
+  if (wrapped.init && typeof wrapped.init === "object" && Object.keys(wrapped).length === 1) {
+    return wrapped.init;
+  }
+  return wrapped;
+}
+
+/** 处理 auth 类命令 — 走专用 auth 端点 */
+async function handleAuthCommand(backendCommand: string, payload: Payload, wrapped: Record<string, any>): Promise<any> {
+  switch (backendCommand) {
+    case "auth_login":
+      return authLogin(payload.username || "", payload.password || "");
+    case "auth_register":
+      return authRegister(payload.username || "", payload.password || "", payload.email || "");
+    case "auth_status":
+      return authStatus();
+    case "auth_refresh":
+      return authRefresh(wrapped.refreshToken || payload.refreshToken || payload.refresh_token || "");
+    case "set_auth_token":
+      // 在 HTTP 模式下，token 已经存在 localStorage，不需要额外操作
+      return { success: true };
+    default:
+      return null;
+  }
+}
+
 export const useTudouBridge = () => {
   const [isLoading, setIsLoading] = useState(false);
   const activeRequests = useRef(new Map<string, Promise<any>>());
@@ -201,52 +283,63 @@ export const useTudouBridge = () => {
           );
 
           const fetchPromise = (async () => {
-            if (!isTauriRuntime()) {
-              console.warn(`[Mock IPC] ${backendCommand}`, backendArgs);
-              if (backendCommand === "auth_status") {
-                const user = useAppStore.getState().user;
-                return user?.token
-                  ? { loggedIn: true, username: user.username, token: user.token }
-                  : { loggedIn: false };
+            // 这些命令保留在 Tauri 本地薄壳中（需要原生能力：文件对话框等）
+            const LOCAL_ONLY_COMMANDS = ["get_version", "select_text_file", "select_image_file", "export_storyboard_bundle"];
+
+            if (LOCAL_ONLY_COMMANDS.includes(backendCommand)) {
+              if (!isTauriRuntime()) {
+                if (DESKTOP_ONLY_COMMANDS.has(backendCommand)) {
+                  throw new Error("此操作需要桌面客户端：请在 Tauri 应用中导出本地资料包。");
+                }
+              } else {
+                const { invoke: tauriInvoke } = await import("@tauri-apps/api/core");
+                const res = await tauriInvoke<T>(backendCommand, backendArgs);
+                if (res && typeof res === "object" && "error" in (res as any) && (res as any).error) {
+                  throw new Error((res as any).error);
+                }
+                return res as T;
               }
-              if (backendCommand === "auth_login") return { token: "mock", username: payload.username } as any;
-              if (backendCommand === "get_version") return "dev-browser" as any;
-              if (backendCommand === "get_app_settings") {
-                return {
-                  textEndpoint: "",
-                  textKey: "",
-                  textModel: "deepseek-reasoner",
-                  textMode: "openai",
-                  imageEndpoint: "",
-                  imageKey: "",
-                  imageModel: "",
-                  reviewThreshold: 90,
-                  enableLocalSave: true,
-                } as any;
-              }
-              if (backendCommand === "get_database_meta") {
-                return {
-                  dbPath: "browser-mock",
-                  dataDir: "browser-mock",
-                } as any;
-              }
-              if (backendCommand === "test_connection") {
-                return {
-                  ok: false,
-                  latencyMs: 0,
-                  error: "Browser mock: Tauri IPC unavailable",
-                } as any;
-              }
-              if (backendCommand === "get_recent_script_tasks") return [] as any;
-              if (backendCommand === "load_script_task") return { task: payload, outputs: [] } as any;
-              if (backendCommand === "get_projects") return [] as any;
-              if (backendCommand === "screenplay_list_recent_projects") return [] as any;
-              if (backendCommand === "screenplay_create_project") return { projectId: "mock-uid-001" } as any;
-              return { success: true } as any;
             }
-            const res = await tauriInvoke<T>(backendCommand, backendArgs);
+
+            // Auth 命令走专用 HTTP 端点
+            const AUTH_COMMANDS = ["auth_login", "auth_register", "auth_status", "auth_refresh", "set_auth_token"];
+            if (AUTH_COMMANDS.includes(backendCommand)) {
+              return await handleAuthCommand(backendCommand, payload, backendArgs) as T;
+            }
+
+            const args = flattenForHttp(backendArgs);
+
+            if (STREAM_COMMANDS.has(backendCommand)) {
+              const result = await streamInvoke<any>(
+                backendCommand,
+                args,
+                (chunk, data) => {
+                  if (backendCommand === "screenplay_generate_step") {
+                    emitBridgeEvent("screenplay:stream-chunk", {
+                      ...(data || {}),
+                      chunk,
+                      projectId: data?.projectId ?? args.projectId,
+                      stepNumber: data?.stepNumber ?? args.stepNumber,
+                    });
+                  }
+                }
+              );
+              return result as T;
+            }
+
+            // 其他所有命令走 HTTP /api/invoke（无论是否在 Tauri 中运行）
+            const res = await httpInvoke<T>(backendCommand, args);
+            if (backendCommand === "doctor_diagnose") {
+              const text = typeof res === "string" ? res : (res as any)?.text || (res as any)?.answer || "";
+              if (text) {
+                emitBridgeEvent("doctor:stream-chunk", {
+                  chunk: text,
+                  projectId: args.projectId,
+                });
+              }
+            }
             if (res && typeof res === "object" && "error" in (res as any) && (res as any).error) throw new Error((res as any).error);
-            return res as T;
+            return res;
           })();
 
           return await Promise.race([fetchPromise, timeoutPromise]);

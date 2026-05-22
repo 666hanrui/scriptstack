@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from "react";
-import { listen } from "@tauri-apps/api/event";
+import { listenEvent } from "../../lib/event-bridge";
 import { useNavigate } from "react-router-dom";
 import { useTudouBridge } from "../../hooks/useTudouBridge";
 import { useAppStore } from "../../store/useAppStore";
@@ -115,7 +115,7 @@ export default function StepEngine({
         const cached = await invoke<any>(
           "workflow/selfcheck-cached",
           { projectId: currentProjectId, stepNumber: stepConfig.id },
-          { silent: true }
+          { silent: true, hideGlobalError: true, timeout: 5000 }
         ).catch(() => null);
         if (!cancelled) setSelfcheckItems(normalizeSelfcheck(cached));
 
@@ -123,7 +123,7 @@ export default function StepEngine({
           const ckpt = await invoke<string | null>(
             "workflow/get-checkpoint",
             { projectId: currentProjectId, trigger: "after-step-6" },
-            { silent: true }
+            { silent: true, hideGlobalError: true, timeout: 5000 }
           ).catch(() => null);
           if (!cancelled) setCheckpoint(ckpt || "");
         }
@@ -210,8 +210,7 @@ export default function StepEngine({
     let streamed = "";
     let unlistenFn: (() => void) | null = null;
     try {
-      unlistenFn = await listen("screenplay:stream-chunk", (event: any) => {
-        const payload = event.payload || {};
+      unlistenFn = await listenEvent("screenplay:stream-chunk", (payload: any) => {
         if (
           payload.projectId === currentProjectId &&
           payload.stepNumber === stepConfig.id

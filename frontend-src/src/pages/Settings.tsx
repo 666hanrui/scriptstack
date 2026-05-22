@@ -333,9 +333,9 @@ export default function Settings() {
     <PageShell maxWidth="max-w-7xl">
       <ModuleHeader
         icon={<Cpu size={28} />}
-        eyebrow="Core Settings"
-        title="核心设置 / 本地配置"
-        subtitle="配置文本模型、视觉模型、本地数据库与审核阈值。API Key 仅进入本地设置，不写入 prompt 审计日志。"
+        eyebrow="Admin Model Settings"
+        title="模型与 API 配置 / 管理员"
+        subtitle="配置服务端文本模型、视觉模型、数据库与审核阈值。API Key 只保存在后端配置中，普通用户页面不读取、不展示。"
         actions={<ActionBar align="right"><ActionButton onClick={handleDeploy} disabled={!isDirty || isLoading} isLoading={isLoading} icon={savedStatus ? <CheckCircle2 size={16} /> : <Save size={16} />}>{savedStatus ? '已保存' : '保存配置'}</ActionButton></ActionBar>}
       />
 
@@ -363,7 +363,7 @@ export default function Settings() {
               </FormField>
               <Collapsible title="高级连接" subtitle="自动填充，一般不用改">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <FormField label="Endpoint URL"><TextInput value={config.textEndpoint} onChange={(event: any) => updateConfig('textEndpoint', event.target.value)} placeholder="https://..." /></FormField>
+                  <FormField label="Endpoint URL"><TextInput value={config.textEndpoint} onChange={(event: any) => updateConfig('textEndpoint', event.target.value)} placeholder="Endpoint URL" /></FormField>
                   <FormField label="Mode">
                     <SelectInput value={config.textMode} onChange={(event) => updateConfig('textMode', event.target.value)}>
                       <option value="openai">openai</option>
@@ -407,7 +407,7 @@ export default function Settings() {
                 )}
               </FormField>
               <Collapsible title="高级连接" subtitle="OpenAI-compatible images endpoint">
-                <FormField label="Endpoint URL"><TextInput value={config.imageEndpoint} onChange={(event: any) => updateConfig('imageEndpoint', event.target.value)} placeholder="https://..." /></FormField>
+                <FormField label="Endpoint URL"><TextInput value={config.imageEndpoint} onChange={(event: any) => updateConfig('imageEndpoint', event.target.value)} placeholder="Endpoint URL" /></FormField>
               </Collapsible>
               {imageTestResult && <ResultViewer maxHeight="max-h-[200px]" title="VISUAL MODEL TEST" content={JSON.stringify(imageTestResult, null, 2)} />}
             </div>
@@ -415,7 +415,7 @@ export default function Settings() {
         </div>
 
         <div className="space-y-6 min-w-0">
-          <Panel title="本地持久化与诊断" subtitle="LOCAL STORAGE / SQLITE" actions={<HardDrive size={18} className="text-cyan-300" />}>
+          <Panel title="服务端持久化与诊断" subtitle="SERVER STORAGE / SQLITE" actions={<HardDrive size={18} className="text-cyan-300" />}>
             <div className="space-y-5">
               <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
                 <div className="flex items-center gap-2 text-white font-bold mb-3"><Database size={16} /> 数据库路径</div>
@@ -423,7 +423,7 @@ export default function Settings() {
               </div>
               <FormField label="强制实体化保存">
                 <div className="flex items-center justify-between">
-                  <span className="text-xs text-white/40">enableLocalSave · 触发 SQLite 引擎写入磁盘</span>
+                  <span className="text-xs text-white/40">enableLocalSave · 触发服务端 SQLite 引擎写入磁盘</span>
                   <Toggle value={config.enableLocalSave} onChange={(v) => updateConfig('enableLocalSave', v)} />
                 </div>
               </FormField>
@@ -448,11 +448,11 @@ export default function Settings() {
             </div>
           </Panel>
 
-          <Panel title="配置边界" subtitle="LOCAL ONLY" actions={<ShieldAlert size={18} className="text-rose-300" />}>
+          <Panel title="配置边界" subtitle="SERVER ONLY" actions={<ShieldAlert size={18} className="text-rose-300" />}>
             <div className="space-y-3 text-sm text-white/55 leading-relaxed">
               <p>供应商预设只负责填充 endpoint、mode 与默认模型。</p>
-              <p>业务提示词来自本地 prompt 文件，不在页面内改写。</p>
-              <p>API Key 只进入本地配置，不写入 prompt dump、prompt audit 或业务日志。</p>
+              <p>业务提示词、模板与运行链路全部留在服务端，客户端只负责展示与发起任务。</p>
+              <p>API Key 只进入服务端配置，不返回普通用户、不写入 prompt dump、prompt audit 或业务日志。</p>
             </div>
             <div className="mt-5 grid grid-cols-2 gap-3">
               <BoundaryItem icon={<Link size={14} />} label="Endpoint" value={config.textEndpoint || '未配置'} />

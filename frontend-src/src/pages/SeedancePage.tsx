@@ -1,5 +1,5 @@
-import { listen } from '@tauri-apps/api/event';
-import { AlertTriangle, Boxes, CheckCircle2, Clapperboard, Copy, FileText, Film, FolderKanban, Image as ImageIcon, Play, RefreshCw, Sparkles } from 'lucide-react';
+import { listenEvent } from '../lib/event-bridge';
+import { AlertTriangle, Boxes, CheckCircle2, Clapperboard, Copy, FileText, Film, FolderKanban, Play, RefreshCw, Sparkles } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import ScriptSelector from '../components/ScriptSelector';
@@ -15,7 +15,7 @@ import ActionBar, { ActionButton } from '../components/ui/ActionBar';
 import EmptyState from '../components/ui/EmptyState';
 import ResultViewer from '../components/ui/ResultViewer';
 
-type BusyState = 'analysis' | 'unit' | 'all' | 'load' | '';
+type BusyState = 'analysis' | 'unit' | 'all' | 'load' | 'visual' | '';
 
 function unitIndexOf(unit: any, fallback: number) {
   const value = unit?.unitIndex ?? unit?.unit_index ?? fallback;
@@ -63,6 +63,7 @@ export default function SeedancePage() {
   const [scriptText, setScriptText] = useState('');
   const [analysis, setAnalysis] = useState<any>(null);
   const [units, setUnits] = useState<any[]>([]);
+  const [visualOutputs, setVisualOutputs] = useState<any[]>([]);
   const [activeUnitIndex, setActiveUnitIndex] = useState(0);
   const [progress, setProgress] = useState<string[]>([]);
   const [busy, setBusy] = useState<BusyState>('');
@@ -85,8 +86,7 @@ export default function SeedancePage() {
 
   useEffect(() => {
     let unlisten: (() => void) | null = null;
-    listen('seedance:progress', (event: any) => {
-      const payload = event.payload || {};
+    listenEvent('seedance:progress', (payload: any) => {
       const pid = taskIdOfPayload(payload);
       if (pid && currentTaskId && pid !== currentTaskId) return;
       setProgress((prev) => [progressLine(payload), ...prev].slice(0, 120));
@@ -106,6 +106,10 @@ export default function SeedancePage() {
       setActiveUnitIndex(list.length > 0 ? unitIndexOf(list[0], 0) : 0);
       const cached = await invoke<any>('seedance/get-analysis', { taskId }, { silent: true }).catch(() => null);
       setAnalysis(cached);
+      if (currentProjectId) {
+        const rows = await invoke<any[]>('visual/list-outputs', { projectId: currentProjectId }, { silent: true }).catch(() => []);
+        setVisualOutputs(Array.isArray(rows) ? rows.filter((row) => row.scriptTaskId === taskId || row.script_task_id === taskId) : []);
+      }
     } catch (err: any) {
       setError(err.message || '读取 Seedance 单元失败');
     } finally {
@@ -141,6 +145,26 @@ export default function SeedancePage() {
     } catch (err: any) {
       setError(err.message || 'Seedance A-D 分析失败');
       setProgress((prev) => [`seedance:phase-ad error ${err.message || err}`, ...prev]);
+    } finally {
+      setBusy('');
+    }
+  };
+
+  const ensureVisualStandards = async () => {
+    if (!selectedTaskId) return;
+    setBusy('visual');
+    setError('');
+    try {
+      const rows = await invoke<any[]>('visual/smart-generate-asset-prompt', {
+        taskId: selectedTaskId,
+        assetTypes: ['character', 'scene', 'prop'],
+        mode: 'video',
+      }, { timeout: 900000 });
+      setVisualOutputs((prev) => [...(Array.isArray(rows) ? rows : []), ...prev]);
+      await loadUnits(selectedTaskId, true);
+      showToast('Seedance 视觉标准件已补齐');
+    } catch (err: any) {
+      setError(err.message || '补齐 Seedance 视觉标准件失败');
     } finally {
       setBusy('');
     }
@@ -207,19 +231,28 @@ export default function SeedancePage() {
     }
   };
 
+  const openVisualPrompt = (type = 'video_seedance_style') => {
+    const params = new URLSearchParams({
+      assetType: 'shot',
+      shotIndex: String(activeUnitIndex),
+      type,
+    });
+    navigate(`/visual-prompts?${params.toString()}`);
+  };
+
   return (
     <PageShell maxWidth="max-w-full">
       <ModuleHeader
         icon={<Clapperboard size={24} />}
         eyebrow="Canonical Seedance Flow"
         title="Seedance V5 / 验收工作台"
-        subtitle="严格对应 seedance_phase_ad、seedance_unit_efg。固定两层：Phase A-D 分析 → Unit E/F/G 生成，页面监听 seedance:progress，并以 script task 为恢复主键。"
-        actions={<ActionBar align="right" className="flex-wrap"><ActionButton variant="secondary" onClick={() => navigate('/projects')} icon={<FolderKanban size={16} />}>项目库</ActionButton><ActionButton variant="secondary" onClick={() => navigate('/scripts')} icon={<FileText size={16} />}>剧本</ActionButton><ActionButton variant="secondary" onClick={() => navigate('/assets')} disabled={!selectedTaskId} icon={<Boxes size={16} />}>资产</ActionButton><ActionButton variant="secondary" onClick={() => navigate('/image')} disabled={!selectedTaskId} icon={<ImageIcon size={16} />}>图像</ActionButton><ActionButton variant="secondary" onClick={() => navigate('/video')} disabled={!selectedTaskId} icon={<Film size={16} />}>视频</ActionButton></ActionBar>}
+        actions={<ActionBar align="right" className="flex-wrap"><ActionButton variant="secondary" onClick={() => navigate('/projects')} icon={<FolderKanban size={16} />}>项目库</ActionButton><ActionButton variant="secondary" onClick={() => navigate('/scripts')} icon={<FileText size={16} />}>剧本</ActionButton><ActionButton variant="secondary" onClick={() => navigate('/assets')} disabled={!selectedTaskId} icon={<Boxes size={16} />}>资产</ActionButton><ActionButton variant="secondary" onClick={() => openVisualPrompt()} disabled={!selectedTaskId} icon={<Sparkles size={16} />}>视觉工坊</ActionButton><ActionButton variant="secondary" onClick={() => navigate('/video')} disabled={!selectedTaskId} icon={<Film size={16} />}>视频</ActionButton></ActionBar>}
       />
 
-      <ContextMetricGrid metrics={[{ label: 'Project', value: currentProjectId || '未绑定', copyable: currentProjectId || undefined, isMono: true }, { label: 'Script Task', value: selectedTaskId || '未选择', copyable: selectedTaskId || undefined, isMono: true }, { label: 'A-D 分析', value: analysisStatus }, { label: 'Units', value: `${completeUnits}/${units.length} done · ${pendingUnits} pending` }]} />
+      <ContextMetricGrid metrics={[{ label: 'Project', value: currentProjectId || '未绑定', copyable: currentProjectId || undefined, isMono: true }, { label: 'Script Task', value: selectedTaskId || '未选择', copyable: selectedTaskId || undefined, isMono: true }, { label: 'A-D 分析', value: analysisStatus }, { label: 'Units', value: `${completeUnits}/${units.length} done · ${pendingUnits} pending` }, { label: '英文视觉标准件', value: `${visualOutputs.length}` }]} />
       {!selectedTaskId && <div className="rounded-2xl border border-yellow-500/20 bg-yellow-500/10 p-4 text-yellow-100 text-sm">请选择 script task。Seedance V5 以 script task 作为恢复主键。</div>}
       {error && <div className="rounded-2xl border border-red-500/20 bg-red-500/10 p-4 text-red-200 text-sm flex items-center gap-2"><AlertTriangle size={16} /> {error}</div>}
+      {selectedTaskId && visualOutputs.length === 0 && <div className="rounded-2xl border border-yellow-500/20 bg-yellow-500/10 p-4 text-yellow-100 text-sm">Seedance 现在只消费英文 AIPROMPT 视觉标准件。请先补齐，或到视觉工坊逐个生成。</div>}
 
       <div className="grid grid-cols-1 xl:grid-cols-[380px_1fr] gap-6 min-h-0">
         <aside className="space-y-6 min-w-0">
@@ -229,7 +262,7 @@ export default function SeedancePage() {
         </aside>
 
         <main className="space-y-6 min-w-0">
-          <Panel title="Generation Controls" subtitle={workStatus} actions={<ActionBar className="flex-wrap"><ActionButton variant="secondary" onClick={() => selectedTaskId && loadUnits(selectedTaskId)} disabled={!selectedTaskId || busy === 'load'} isLoading={busy === 'load'} icon={<RefreshCw size={16} />}>恢复</ActionButton><ActionButton onClick={runAnalysis} disabled={!selectedTaskId} isLoading={busy === 'analysis'} icon={<Sparkles size={16} />}>Phase A-D</ActionButton><ActionButton variant="secondary" onClick={runAll} disabled={!selectedTaskId || units.length === 0} isLoading={busy === 'all'} icon={<Play size={16} />}>全部生成</ActionButton></ActionBar>}>
+          <Panel title="Generation Controls" subtitle={workStatus} actions={<ActionBar className="flex-wrap"><ActionButton variant="secondary" onClick={() => selectedTaskId && loadUnits(selectedTaskId)} disabled={!selectedTaskId || busy === 'load'} isLoading={busy === 'load'} icon={<RefreshCw size={16} />}>恢复</ActionButton><ActionButton variant="secondary" onClick={ensureVisualStandards} disabled={!selectedTaskId} isLoading={busy === 'visual'} icon={<Sparkles size={16} />}>自动补齐视觉标准件</ActionButton><ActionButton onClick={runAnalysis} disabled={!selectedTaskId} isLoading={busy === 'analysis'} icon={<Sparkles size={16} />}>Phase A-D</ActionButton><ActionButton variant="secondary" onClick={runAll} disabled={!selectedTaskId || units.length === 0} isLoading={busy === 'all'} icon={<Play size={16} />}>全部生成</ActionButton></ActionBar>}>
             <div className="grid grid-cols-1 2xl:grid-cols-2 gap-5">
               <Panel title="Layer 1 · Phase A-D 分析" subtitle={analysis ? 'ready' : 'pending'}>
                 <div className="grid grid-cols-2 gap-3 mb-4"><MiniInfo label="总时长" value={analysis?.totalSec || analysis?.total_sec || 'N/A'} /><MiniInfo label="单元数" value={analysis?.totalUnits || analysis?.total_units || units.length || 'N/A'} /></div>
@@ -242,7 +275,7 @@ export default function SeedancePage() {
             </div>
           </Panel>
 
-          <Panel title={`Unit Detail · ${activeUnit ? activeUnitIndex + 1 : '-'}`} subtitle="copyArea / noteAreaJson / status" actions={<ActionBar><ActionButton variant="secondary" onClick={refreshCurrentUnit} disabled={!selectedTaskId || !activeUnit || busy === 'load'} isLoading={busy === 'load'} icon={<RefreshCw size={16} />}>刷新单元</ActionButton><ActionButton onClick={() => runUnit(activeUnitIndex)} disabled={!selectedTaskId || !activeUnit || busy === 'unit'} isLoading={busy === 'unit'} icon={<Copy size={16} />}>生成当前单元</ActionButton></ActionBar>}>
+          <Panel title={`Unit Detail · ${activeUnit ? activeUnitIndex + 1 : '-'}`} subtitle="copyArea / noteAreaJson / status" actions={<ActionBar className="flex-wrap"><ActionButton variant="secondary" onClick={refreshCurrentUnit} disabled={!selectedTaskId || !activeUnit || busy === 'load'} isLoading={busy === 'load'} icon={<RefreshCw size={16} />}>刷新单元</ActionButton><ActionButton variant="secondary" onClick={() => openVisualPrompt('video_seedance_style')} disabled={!selectedTaskId || !activeUnit} icon={<Sparkles size={16} />}>复制型视频模板</ActionButton><ActionButton onClick={() => runUnit(activeUnitIndex)} disabled={!selectedTaskId || !activeUnit || busy === 'unit'} isLoading={busy === 'unit'} icon={<Copy size={16} />}>生成当前单元</ActionButton></ActionBar>}>
             {!activeUnit ? <EmptyState title="请选择一个 Unit" description="左侧完成 A-D 分析后，在 Unit 列表里选择一个单元。" icon={<Clapperboard size={28} />} /> : <div className="grid grid-cols-1 2xl:grid-cols-2 gap-5"><div className="space-y-4"><div className="grid grid-cols-2 gap-3"><MiniInfo label="status" value={unitStatus(activeUnit)} /><MiniInfo label="retry" value={activeUnit.retryCount ?? activeUnit.retry_count ?? 0} /></div>{(activeUnit.errorMessage || activeUnit.error_message) && <div className="rounded-xl border border-red-500/20 bg-red-500/10 p-3 text-red-200 text-sm">{activeUnit.errorMessage || activeUnit.error_message}</div>}<ResultViewer maxHeight="max-h-[250px]" title="COPY AREA" content={activeUnit.copyArea || activeUnit.copy_area || '尚未生成 copyArea。'} /></div><ResultViewer maxHeight="max-h-[250px]" title="NOTE AREA JSON" content={noteArea ? JSON.stringify(noteArea, null, 2) : '尚未生成 noteAreaJson。'} /></div>}
           </Panel>
         </main>

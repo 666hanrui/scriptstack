@@ -2,7 +2,7 @@ import React, { useRef, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAppStore } from '../../store/useAppStore';
-import { Sparkles, Route as RouteIcon, FileText, Library, Image as ImageIcon, Film, Layers3, Clapperboard, FolderKanban, Settings, Command, User as UserIcon, LogOut } from 'lucide-react';
+import { Sparkles, Route as RouteIcon, FileText, Library, Film, Layers3, Clapperboard, FolderKanban, Settings, Command, User as UserIcon, LogOut, Camera, ShieldCheck, BookOpen } from 'lucide-react';
 import { useTudouBridge } from '../../hooks/useTudouBridge';
 
 export default function GlobalSidebar() {
@@ -15,6 +15,7 @@ export default function GlobalSidebar() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const isZh = language === 'zh';
   const isLight = themeMode === 'light';
+  const isAdmin = Boolean(user?.isAdmin || user?.role === 'admin');
 
   const handleMouseMove = (e: React.MouseEvent) => {
     if (!navRef.current) return;
@@ -31,46 +32,42 @@ export default function GlobalSidebar() {
   };
 
   return (
-    <motion.aside
-      ref={navRef}
-      onMouseMove={handleMouseMove}
-      initial={{ opacity: 0, x: -20 }}
-      animate={{ opacity: 1, x: 0 }}
-      className={`relative z-50 h-full w-[76px] flex flex-col items-center py-4 border-r backdrop-blur-xl overflow-visible flex-shrink-0 ${
-        isLight
-          ? 'border-slate-900/10 bg-white/42 shadow-[inset_-1px_0_0_rgba(255,255,255,0.48)]'
-          : 'border-white/[0.06] bg-[#050505]/88 shadow-[inset_-1px_0_0_rgba(255,255,255,0.03)]'
-      }`}
+    <aside
+      className="relative z-50 h-full w-[64px] flex flex-col items-center py-5 flex-shrink-0 bg-[var(--bg-primary)] border-r border-[var(--border-subtle)]"
     >
-      <div className="pointer-events-none absolute -inset-px opacity-0 transition-opacity duration-300 hover:opacity-100" style={{ background: `radial-gradient(400px circle at ${mousePos.x}px ${mousePos.y}px, ${isLight ? 'rgba(99,102,241,0.12)' : 'rgba(255,255,255,0.05)'}, transparent 40%)` }} />
-
-      <div className="mb-5 w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500/20 to-cyan-500/10 border border-white/[0.08] flex items-center justify-center shadow-[0_0_15px_rgba(99,102,241,0.15),inset_0_1px_1px_rgba(255,255,255,0.1)]">
-        <Command className="text-indigo-300 drop-shadow-[0_0_8px_rgba(165,180,252,0.6)]" size={20} />
+      <div className="mb-6 w-8 h-8 rounded-lg bg-[var(--surface-elevated)] border border-[var(--border-subtle)] flex items-center justify-center text-[var(--accent)] shadow-sm">
+        <Command size={18} />
       </div>
 
-      <nav className="flex flex-col gap-1 relative z-10 w-full px-2 mb-4">
-        <NavItem icon={<Sparkles size={18} />} path="/" currentPath={location.pathname} tooltip={isZh ? '灵感枢纽' : 'Hub'} isLight={isLight} />
-        <NavItem icon={<RouteIcon size={18} />} path="/workflow" currentPath={location.pathname} tooltip={isZh ? '工作流' : 'Workflow'} isLight={isLight} />
-        <NavItem icon={<FileText size={18} />} path="/scripts" currentPath={location.pathname} tooltip={isZh ? '剧本任务' : 'Scripts'} isLight={isLight} />
-        <NavItem icon={<Library size={18} />} path="/assets" currentPath={location.pathname} tooltip={isZh ? '资产矩阵' : 'Assets'} isLight={isLight} />
+      <nav className="flex flex-col gap-3 relative w-full px-2">
+        <NavItem icon={<Sparkles size={18} />} path="/" currentPath={location.pathname} tooltip={isZh ? '灵感枢纽' : 'Hub'} />
+        <NavItem icon={<BookOpen size={18} />} path="/longform" currentPath={location.pathname} tooltip={isZh ? '长故事' : 'Longform'} />
+        <NavItem icon={<RouteIcon size={18} />} path="/workflow" currentPath={location.pathname} tooltip={isZh ? '工作流' : 'Workflow'} />
+        <NavItem icon={<FileText size={18} />} path="/scripts" currentPath={location.pathname} tooltip={isZh ? '剧本任务' : 'Scripts'} />
+        <NavItem icon={<Library size={18} />} path="/assets" currentPath={location.pathname} tooltip={isZh ? '资产矩阵' : 'Assets'} />
+        <NavItem icon={<Sparkles size={18} />} path="/visual-prompts" currentPath={location.pathname} tooltip={isZh ? '视觉提示词' : 'Visual Prompts'} />
+        <NavItem icon={<Camera size={18} />} path="/storyboard" currentPath={location.pathname} tooltip={isZh ? '故事版' : 'Storyboard'} />
 
-        <div className="w-6 h-px bg-gradient-to-r from-transparent via-white/[0.1] to-transparent my-1 mx-auto" />
+        <div className="w-5 h-px bg-[var(--border-divider)] my-2 mx-auto" />
 
-        <NavItem icon={<ImageIcon size={18} />} path="/image" currentPath={location.pathname} tooltip={isZh ? '图像提示词' : 'Image Prompt'} isLight={isLight} />
-        <NavItem icon={<Film size={18} />} path="/video" currentPath={location.pathname} tooltip={isZh ? '视频提示词' : 'Video Prompt'} isLight={isLight} />
-        <NavItem icon={<Layers3 size={18} />} path="/frame-prompt" currentPath={location.pathname} tooltip={isZh ? '逐镜提示词' : 'Frame Prompt'} isLight={isLight} />
-        <NavItem icon={<Clapperboard size={18} />} path="/seedance" currentPath={location.pathname} tooltip="Seedance" isLight={isLight} />
+        <NavItem icon={<Film size={18} />} path="/video" currentPath={location.pathname} tooltip={isZh ? '视频提示词' : 'Video Prompt'} />
+        <NavItem icon={<Layers3 size={18} />} path="/frame-prompt" currentPath={location.pathname} tooltip={isZh ? '逐镜提示词' : 'Frame Prompt'} />
+        <NavItem icon={<Clapperboard size={18} />} path="/seedance" currentPath={location.pathname} tooltip="Seedance" />
 
-        <div className="w-6 h-px bg-gradient-to-r from-transparent via-white/[0.1] to-transparent my-1 mx-auto" />
+        <div className="w-5 h-px bg-[var(--border-divider)] my-2 mx-auto" />
 
-        <NavItem icon={<FolderKanban size={18} />} path="/projects" currentPath={location.pathname} tooltip={isZh ? '项目库' : 'Projects'} isLight={isLight} />
-        <NavItem icon={<Settings size={18} />} path="/settings" currentPath={location.pathname} tooltip={isZh ? '设置' : 'Settings'} isLight={isLight} />
+        <NavItem icon={<FolderKanban size={18} />} path="/projects" currentPath={location.pathname} tooltip={isZh ? '项目库' : 'Projects'} />
+        {isAdmin && (
+          <>
+            <NavItem icon={<ShieldCheck size={18} />} path="/admin" currentPath={location.pathname} tooltip={isZh ? '管理员后台' : 'Admin'} />
+            <NavItem icon={<Settings size={18} />} path="/settings" currentPath={location.pathname} tooltip={isZh ? '模型/API' : 'Model API'} />
+          </>
+        )}
       </nav>
 
       <div className="mt-auto relative cursor-pointer pt-2 group" onClick={() => setIsMenuOpen(!isMenuOpen)}>
-        <div className="absolute inset-0 bg-indigo-500 rounded-full blur-xl opacity-20 group-hover:opacity-60 transition-opacity duration-500 mt-2" />
-        <div className="relative w-10 h-10 rounded-full bg-white/[0.03] border border-white/[0.08] flex items-center justify-center backdrop-blur-md transition-all duration-300 group-hover:scale-105 group-hover:border-indigo-400/30 group-hover:bg-indigo-500/10 shadow-[inset_0_1px_1px_rgba(255,255,255,0.05)]">
-          <span className="text-indigo-200 text-sm font-medium tracking-widest drop-shadow-md">
+        <div className="relative w-8 h-8 rounded-full bg-[var(--surface-elevated)] border border-[var(--border-subtle)] flex items-center justify-center transition-all hover:bg-[var(--surface-hover)]">
+          <span className="text-[var(--text-primary)] text-xs font-bold tracking-widest">
             {user ? user.username.charAt(0).toUpperCase() : 'U'}
           </span>
         </div>
@@ -93,39 +90,26 @@ export default function GlobalSidebar() {
           )}
         </AnimatePresence>
       </div>
-    </motion.aside>
+    </aside>
   );
 }
 
-function NavItem({ icon, path, currentPath, tooltip, isLight }: { icon: React.ReactNode; path: string; currentPath: string; tooltip: string; isLight: boolean }) {
+function NavItem({ icon, path, currentPath, tooltip }: { icon: React.ReactNode; path: string; currentPath: string; tooltip: string }) {
   const navigate = useNavigate();
   const isActive = currentPath === path || (path !== '/' && currentPath.startsWith(path));
   return (
     <div className="relative group w-full flex justify-center">
-      {isActive && (
-        <motion.div
-          layoutId="navGlow"
-          className={`absolute inset-0 rounded-[14px] border shadow-[inset_0_1px_1px_rgba(255,255,255,0.1)] ${
-            isLight ? 'bg-indigo-500/10 border-indigo-500/25' : 'bg-gradient-to-br from-indigo-500/10 to-transparent border-indigo-500/20'
-          }`}
-          transition={{ type: 'spring' as const, stiffness: 300, damping: 30 }}
-        />
-      )}
       <button
         onClick={() => navigate(path)}
-        className={`relative z-10 w-full h-10 flex items-center justify-center rounded-xl transition-all duration-300 ${
+        className={`relative z-10 w-10 h-10 flex items-center justify-center rounded-xl transition-all duration-200 ${
           isActive
-            ? 'text-indigo-300 drop-shadow-[0_0_8px_rgba(165,180,252,0.4)]'
-            : isLight ? 'text-slate-700/55 hover:text-slate-950 hover:bg-slate-900/[0.05]' : 'text-white/40 hover:text-white/90 hover:bg-white/[0.04]'
+            ? 'bg-[var(--surface-hover)] text-[var(--text-primary)]'
+            : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--surface)]'
         }`}
       >
         {icon}
       </button>
-      <div className={`absolute left-[calc(100%+14px)] top-1/2 -translate-y-1/2 px-3 py-1.5 border text-[11px] font-medium tracking-widest rounded-lg opacity-0 translate-x-[-4px] pointer-events-none group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-300 z-50 whitespace-nowrap ${
-        isLight
-          ? 'bg-white/92 border-slate-900/10 text-slate-800 shadow-[0_10px_24px_rgba(15,23,42,0.16)]'
-          : 'bg-[#141414] border-white/[0.08] text-white/90 shadow-[0_10px_20px_rgba(0,0,0,0.4)]'
-      }`}>
+      <div className="absolute left-[calc(100%+14px)] top-1/2 -translate-y-1/2 px-3 py-1.5 bg-[var(--surface-elevated)] border border-[var(--border-subtle)] text-xs font-bold text-[var(--text-primary)] rounded opacity-0 -translate-x-2 pointer-events-none group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-200 z-50 whitespace-nowrap shadow-md">
         {tooltip}
       </div>
     </div>

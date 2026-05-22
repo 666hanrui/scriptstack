@@ -1,10 +1,12 @@
 export type RealmType = "cloudcity" | "valley" | "samurai";
-export type PageId = "hub" | "workflow" | "scripts" | "assets" | "image" | "video" | "frame-prompt" | "seedance" | "flow" | "projects" | "settings";
+export type PageId = "hub" | "longform" | "workflow" | "scripts" | "assets" | "visual-prompts" | "image" | "video" | "frame-prompt" | "seedance" | "flow" | "projects" | "admin" | "settings";
 
 export interface UserProfile {
   username: string;
   token: string;
   avatarUrl?: string;
+  role?: string;
+  isAdmin?: boolean;
 }
 
 export interface AppSettings {

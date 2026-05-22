@@ -1,6 +1,8 @@
 # Rust
+target/
 src-tauri/target/
 src-tauri/data/
+src-server/data/
 
 # Node
 node_modules/
