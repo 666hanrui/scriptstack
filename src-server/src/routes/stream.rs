@@ -33,7 +33,7 @@ pub async fn handle_stream(
     State(state): State<AppState>,
     Json(req): Json<StreamRequest>,
 ) -> Response {
-    let db = state.db.clone();
+    let db_path = state.db_path.clone();
     let config = state.config.clone();
     let cmd = req.cmd;
     let args = req.args;
@@ -42,7 +42,7 @@ pub async fn handle_stream(
     let (tx, rx) = tokio::sync::mpsc::channel::<Result<Event, Infallible>>(2048);
 
     tokio::task::spawn_blocking(move || {
-        let result = dispatch_stream_blocking(&cmd, db, config, args, &user_id, tx.clone());
+        let result = dispatch_stream_blocking(&cmd, db_path, config, args, &user_id, tx.clone());
 
         match result {
             Ok(final_value) => {
@@ -68,7 +68,7 @@ pub async fn handle_stream(
 }
 
 type Tx = tokio::sync::mpsc::Sender<Result<Event, Infallible>>;
-type Db = std::sync::Arc<std::sync::Mutex<rusqlite::Connection>>;
+type Db = String;
 
 fn try_send_event(tx: &Tx, payload: serde_json::Value) {
     let _ = tx.try_send(Ok(Event::default().data(payload.to_string())));
@@ -85,6 +85,10 @@ fn dispatch_stream_blocking(
     tx: Tx,
 ) -> Result<serde_json::Value, String> {
     let rt = tokio::runtime::Handle::current();
+    let open_conn = || {
+        crate::db::open_database_connection(std::path::Path::new(&db))
+            .map_err(|e| format!("打开数据库失败: {}", e))
+    };
 
     match cmd {
         "screenplay_generate_step" => {
@@ -105,9 +109,9 @@ fn dispatch_stream_blocking(
                 }));
             };
 
-            let conn = db.lock().unwrap_or_else(|e| e.into_inner());
+            let conn = open_conn()?;
             let future = crate::services::screenplay::generate_step_async(
-                &*conn,
+                &conn,
                 &config,
                 &project_id,
                 user_id,
@@ -128,9 +132,9 @@ fn dispatch_stream_blocking(
                 try_send_event(&tx_c, serde_json::json!({ "chunk": chunk }));
             };
 
-            let conn = db.lock().unwrap_or_else(|e| e.into_inner());
+            let conn = open_conn()?;
             let future = crate::services::screenplay::selfcheck_step_async(
-                &*conn,
+                &conn,
                 &config,
                 &project_id,
                 user_id,
@@ -144,7 +148,7 @@ fn dispatch_stream_blocking(
         "screenplay_create_project" => {
             let init: crate::services::screenplay_store::ProjectInit = serde_json::from_value(args.clone())
                 .map_err(|e| e.to_string())?;
-            let conn = db.lock().unwrap_or_else(|e| e.into_inner());
+            let conn = open_conn()?;
             let result = crate::services::screenplay::create_project(&conn, user_id, init);
             Ok(serde_json::to_value(result).unwrap_or_default())
         }
@@ -152,9 +156,9 @@ fn dispatch_stream_blocking(
             let project_id = args["projectId"].as_str().unwrap_or("").to_string();
             let trigger = args["trigger"].as_str().unwrap_or("manual").to_string();
 
-            let conn = db.lock().unwrap_or_else(|e| e.into_inner());
+            let conn = open_conn()?;
             let future = crate::services::screenplay::generate_checkpoint_async(
-                &*conn,
+                &conn,
                 &config,
                 &project_id,
                 user_id,
@@ -173,9 +177,9 @@ fn dispatch_stream_blocking(
                 try_send_event(&tx_c, serde_json::json!({ "chunk": chunk }));
             };
 
-            let conn = db.lock().unwrap_or_else(|e| e.into_inner());
+            let conn = open_conn()?;
             let future = crate::services::script_generation::run_script_generation(
-                &*conn,
+                &conn,
                 &input,
                 Some(&on_chunk),
             );

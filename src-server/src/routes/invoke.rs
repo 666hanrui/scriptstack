@@ -27,7 +27,7 @@ pub async fn handle_invoke(
     State(state): State<AppState>,
     Json(req): Json<InvokeRequest>,
 ) -> Result<Json<serde_json::Value>, AppError> {
-    let db = state.db.clone();
+    let db_path = state.db_path.clone();
     let config = state.config.clone();
     let cmd = req.cmd;
     let is_admin = auth_user.is_admin;
@@ -38,12 +38,12 @@ pub async fn handle_invoke(
     }
 
     let res = tokio::task::spawn_blocking(move || -> Result<serde_json::Value, AppError> {
-        let conn = db.lock().unwrap_or_else(|e| e.into_inner());
+        let conn = crate::db::open_database_connection(std::path::Path::new(&db_path))?;
 
         match cmd.as_str() {
             // ── System / Settings ──
             "get_version" => {
-                Ok(serde_json::json!("3.0.0"))
+                Ok(serde_json::json!("3.0.1"))
             }
             "get_app_settings" => {
                 ensure_admin(is_admin)?;
@@ -735,6 +735,11 @@ pub async fn handle_invoke(
             "import_source_file" => {
                 let res = services::longform::import_source_file(&conn, &args)
                     .map_err(|e| AppError::Internal(e))?;
+                Ok(res)
+            }
+            "parse_uploaded_source_file" => {
+                let res = services::longform::parse_uploaded_source_file(&args)
+                    .map_err(|e| AppError::BadRequest(e))?;
                 Ok(res)
             }
             "list_source_materials" => {

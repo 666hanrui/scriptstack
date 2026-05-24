@@ -12,7 +12,7 @@ export default function ContextStatusBar() {
   const routeNameMap: Record<string, string> = {
     '/': isZh ? '灵感枢纽' : 'Inspiration Hub',
     '/longform': isZh ? '长故事孵化器' : 'Longform Incubator',
-    '/workflow': isZh ? '工作流演推' : 'Workflow Valley',
+    '/workflow': isZh ? '剧本生成向导' : 'Screenplay Guide',
     '/scripts': isZh ? '剧本任务库' : 'Script Tasks',
     '/assets': isZh ? '资产矩阵' : 'Assets Forge',
     '/visual-prompts': isZh ? '视觉提示词工坊' : 'Visual Prompt Forge',

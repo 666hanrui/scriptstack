@@ -23,7 +23,6 @@ export const useAppStore = create<AppState>()(
         name: "scriptstack-core-storage",
         storage: createJSONStorage(() => localStorage),
         partialize: (state) => ({
-          user: state.user,
           language: state.language,
           themeMode: state.themeMode,
           accentColor: state.accentColor,

@@ -1,0 +1,64 @@
+name: Restoration Acceptance
+
+on:
+  push:
+    branches:
+      - restore/phase-2-foundations
+  pull_request:
+    branches:
+      - restore/phase-2-foundations
+
+jobs:
+  frontend-and-audit:
+    name: Frontend, prompt provenance, local-only audit
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install frontend dependencies
+        run: npm ci
+
+      - name: Typecheck frontend
+        run: npm run frontend:typecheck
+
+      - name: Build frontend
+        run: npm run frontend:build
+
+      - name: Verify prompt manifest against raw-original archive
+        run: npm run prompt:manifest
+
+      - name: Ensure generated prompt manifest is committed
+        run: git diff --exit-code -- src-tauri/src/llm/prompts/manifest.json
+
+      - name: Run local-only regression audit
+        run: npm run audit:local-only
+
+  rust-checks:
+    name: Rust checks
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache cargo
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+
+      - name: Cargo check
+        working-directory: src-tauri
+        run: cargo check
+
+      - name: Cargo test
+        working-directory: src-tauri
+        run: cargo test

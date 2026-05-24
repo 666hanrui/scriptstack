@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Activity, Boxes, CheckCircle2, Clapperboard, FileText, Film, FolderKanban, Image as ImageIcon, Layers3, RefreshCw, Save, Sparkles, Wand2 } from 'lucide-react';
+import { Activity, Boxes, CheckCircle2, Clapperboard, FileText, Film, FolderKanban, Image as ImageIcon, Layers3, Loader2, RefreshCw, Save, Sparkles, Wand2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import ScriptSelector from '../components/ScriptSelector';
 import { useTudouBridge } from '../hooks/useTudouBridge';
@@ -63,6 +63,36 @@ function groupSceneIndex(group: any, fallback: number) {
     return Number.isFinite(n) ? n - 1 : fallback;
   }
   return fallback;
+}
+
+const busyCopy: Record<string, { title: string; detail: string }> = {
+  load: { title: '正在恢复已有输出', detail: '正在从服务器读取 Outline、逐镜结果和视觉标准件。' },
+  outline: { title: '正在生成分镜大纲', detail: '大模型正在把剧本拆成可生成的镜头列表，完成后会自动刷新右侧结果。' },
+  confirm: { title: '正在确认分镜大纲', detail: '正在保存当前 Outline，后续逐镜生成会以它为准。' },
+  all: { title: '正在全量逐镜生成', detail: '这个步骤耗时较长，系统会生成所有镜头的 Seedance / 分镜提示词。' },
+  group: { title: '正在生成当前镜头', detail: '只重算右侧选中的单个镜头，完成后会精准回到当前镜头。' },
+  save: { title: '正在保存逐镜结果', detail: '正在写入你调整过的 Seedance Groups。' },
+  quality: { title: '正在做质量检查', detail: '正在扫描提示词缺漏、格式和可执行性。' },
+  visual: { title: '正在补齐视觉标准件', detail: '正在为人物、场景、道具生成英文 AIPROMPT。' },
+};
+
+function ProgressNotice({ busy }: { busy: string }) {
+  if (!busy) return null;
+  const copy = busyCopy[busy] || { title: '正在处理', detail: '任务仍在运行，请等待当前操作完成。' };
+  return (
+    <div className="rounded-2xl border border-indigo-500/20 bg-indigo-500/10 p-4 text-indigo-100">
+      <div className="flex items-center gap-3">
+        <Loader2 size={18} className="animate-spin" />
+        <div>
+          <div className="text-sm font-bold">{copy.title}</div>
+          <div className="mt-1 text-xs text-indigo-100/65 leading-5">{copy.detail}</div>
+        </div>
+      </div>
+      <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-white/10">
+        <div className="h-full w-1/3 animate-progress-sweep rounded-full bg-indigo-300" />
+      </div>
+    </div>
+  );
 }
 
 export default function FramePromptLab() {
@@ -295,6 +325,7 @@ export default function FramePromptLab() {
         { label: '英文视觉标准件', value: `${visualOutputs.length}` },
       ]} />
 
+      <ProgressNotice busy={busy} />
       {error && <div className="rounded-2xl border border-red-500/20 bg-red-500/10 p-4 text-red-200 text-sm">{error}</div>}
       {selectedTaskId && visualOutputs.length === 0 && (
         <div className="rounded-2xl border border-yellow-500/20 bg-yellow-500/10 p-4 text-yellow-100 text-sm">

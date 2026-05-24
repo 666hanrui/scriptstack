@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useAppStore } from '../../store/useAppStore';
 import { Sparkles, Route as RouteIcon, FileText, Library, Film, Layers3, Clapperboard, FolderKanban, Settings, Command, User as UserIcon, LogOut, Camera, ShieldCheck, BookOpen } from 'lucide-react';
 import { useTudouBridge } from '../../hooks/useTudouBridge';
+import { clearSessionAuth } from '../../lib/api-client';
 
 export default function GlobalSidebar() {
   const { user, setUser, language, themeMode } = useAppStore();
@@ -24,6 +25,7 @@ export default function GlobalSidebar() {
   };
 
   const handleLogout = async () => {
+    clearSessionAuth();
     await invoke('auth/set-token', { token: '', refreshToken: '' }, { silent: true, hideGlobalError: true }).catch(() => undefined);
     setUser(null);
     setIsMenuOpen(false);
@@ -42,7 +44,7 @@ export default function GlobalSidebar() {
       <nav className="flex flex-col gap-3 relative w-full px-2">
         <NavItem icon={<Sparkles size={18} />} path="/" currentPath={location.pathname} tooltip={isZh ? '灵感枢纽' : 'Hub'} />
         <NavItem icon={<BookOpen size={18} />} path="/longform" currentPath={location.pathname} tooltip={isZh ? '长故事' : 'Longform'} />
-        <NavItem icon={<RouteIcon size={18} />} path="/workflow" currentPath={location.pathname} tooltip={isZh ? '工作流' : 'Workflow'} />
+        <NavItem icon={<RouteIcon size={18} />} path="/workflow" currentPath={location.pathname} tooltip={isZh ? '剧本生成向导' : 'Screenplay Guide'} />
         <NavItem icon={<FileText size={18} />} path="/scripts" currentPath={location.pathname} tooltip={isZh ? '剧本任务' : 'Scripts'} />
         <NavItem icon={<Library size={18} />} path="/assets" currentPath={location.pathname} tooltip={isZh ? '资产矩阵' : 'Assets'} />
         <NavItem icon={<Sparkles size={18} />} path="/visual-prompts" currentPath={location.pathname} tooltip={isZh ? '视觉提示词' : 'Visual Prompts'} />

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { BookOpen, CornerDownRight, FileText, FolderKanban, Loader2, Route as RouteIcon, Sparkles, Wand2 } from 'lucide-react';
 import { useTudouBridge } from '../hooks/useTudouBridge';
@@ -131,6 +131,7 @@ export default function LongformIncubator() {
   const [notes, setNotes] = useState('');
   const [result, setResult] = useState<IncubationResult | null>(null);
   const [selectedEpisode, setSelectedEpisode] = useState(0);
+  const workflowRequestIdRef = useRef('');
   const [busy, setBusy] = useState<'incubate' | 'workflow' | ''>('');
   const [error, setError] = useState('');
 
@@ -180,6 +181,7 @@ export default function LongformIncubator() {
     try {
       const episodeTitle = episode.title || `第 ${episode.episodeIndex || selectedEpisode + 1} 集`;
       const workflow = await invoke<any>('project/create', {
+        clientRequestId: workflowRequestIdRef.current || (workflowRequestIdRef.current = `longform-${Date.now()}-${Math.random().toString(36).slice(2)}`),
         name: `${plan.seriesTitle || name || '长故事'} · ${episodeTitle}`,
         concept: episode.logline || plan.logline || idea,
         duration: episodeDuration,
@@ -199,6 +201,7 @@ export default function LongformIncubator() {
       setCurrentTaskId(null);
       setScriptSeed(packet);
       showToast({ message: '已创建本集八步工作流', type: 'success' });
+      workflowRequestIdRef.current = '';
       navigate('/workflow');
     } catch (err: any) {
       setError(err?.message || '创建八步工作流失败');

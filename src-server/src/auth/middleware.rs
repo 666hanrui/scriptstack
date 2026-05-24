@@ -40,10 +40,10 @@ impl FromRequestParts<AppState> for AuthUser {
         };
         let is_admin = role == "admin";
 
-        let db = state.db.clone();
+        let db_path = state.db_path.clone();
         let uid = claims.sub.clone();
         tokio::task::spawn_blocking(move || {
-            if let Ok(conn) = db.lock() {
+            if let Ok(conn) = crate::db::open_database_connection(std::path::Path::new(&db_path)) {
                 let _ = conn.execute(
                     "UPDATE users SET last_seen_at = datetime('now') WHERE id = ?1",
                     [uid],

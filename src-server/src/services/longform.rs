@@ -58,6 +58,10 @@ fn guess_mime(path: &Path) -> String {
     .to_string()
 }
 
+fn guess_mime_from_name(file_name: &str) -> String {
+    guess_mime(Path::new(file_name))
+}
+
 fn decode_text_bytes(bytes: &[u8]) -> (String, String) {
     if let Ok(s) = std::str::from_utf8(bytes) {
         return (s.to_string(), "utf-8".into());
@@ -148,6 +152,62 @@ pub fn parse_source_file(path: &Path) -> Result<Value, String> {
         "content": content,
         "materialType": material_type,
     }))
+}
+
+pub fn parse_source_bytes(file_name: &str, bytes: &[u8]) -> Result<Value, String> {
+    let clean_name = if file_name.trim().is_empty() {
+        "浏览器上传材料"
+    } else {
+        file_name.trim()
+    };
+    let ext = Path::new(clean_name)
+        .extension()
+        .and_then(|e| e.to_str())
+        .unwrap_or("")
+        .to_lowercase();
+    let (content, encoding) = match ext.as_str() {
+        "docx" => (extract_docx_text(bytes)?, "docx-xml".into()),
+        "pdf" => {
+            let temp_path = std::env::temp_dir().join(format!("scriptstack-upload-{}.pdf", uuid()));
+            std::fs::write(&temp_path, bytes).map_err(|e| format!("临时 PDF 写入失败: {}", e))?;
+            let extracted = extract_pdf_text(&temp_path);
+            let _ = std::fs::remove_file(&temp_path);
+            (extracted?, "pdf-text-layer".into())
+        }
+        _ => {
+            let (text, enc) = decode_text_bytes(bytes);
+            (normalize_text(&text), enc)
+        }
+    };
+    let material_type = detect_material_type(&content);
+    Ok(json!({
+        "filePath": Value::Null,
+        "fileName": clean_name,
+        "fileHash": sha256_hex(bytes),
+        "fileSize": bytes.len(),
+        "mimeType": guess_mime_from_name(clean_name),
+        "encoding": encoding,
+        "content": content,
+        "materialType": material_type,
+    }))
+}
+
+pub fn parse_uploaded_source_file(payload: &Value) -> Result<Value, String> {
+    use base64::Engine;
+
+    let file_name = payload["fileName"]
+        .as_str()
+        .or_else(|| payload["file_name"].as_str())
+        .unwrap_or("浏览器上传材料");
+    let data = payload["base64"]
+        .as_str()
+        .or_else(|| payload["data"].as_str())
+        .ok_or_else(|| "缺少 base64 文件内容".to_string())?;
+    let clean = data.split_once(',').map(|(_, body)| body).unwrap_or(data);
+    let bytes = base64::engine::general_purpose::STANDARD
+        .decode(clean)
+        .map_err(|e| format!("文件 Base64 解码失败: {}", e))?;
+    parse_source_bytes(file_name, &bytes)
 }
 
 pub fn normalize_text(input: &str) -> String {
@@ -526,6 +586,8 @@ pub fn import_source_file(conn: &Connection, payload: &Value) -> Result<Value, S
         .unwrap_or("");
     let parsed = if !file_path.trim().is_empty() {
         parse_source_file(Path::new(file_path))?
+    } else if payload["base64"].is_string() || payload["data"].is_string() {
+        parse_uploaded_source_file(payload)?
     } else {
         let content = payload["content"]
             .as_str()

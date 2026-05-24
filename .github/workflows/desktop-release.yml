@@ -6,13 +6,13 @@ on:
       api_base:
         description: "Public ScriptStack API base URL"
         required: true
-        default: "https://544834.xyz"
+        default: "http://49.235.153.151"
   push:
     tags:
       - "v*"
 
 env:
-  VITE_API_BASE: ${{ github.event.inputs.api_base || 'https://544834.xyz' }}
+  VITE_API_BASE: ${{ github.event.inputs.api_base || 'http://49.235.153.151' }}
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:

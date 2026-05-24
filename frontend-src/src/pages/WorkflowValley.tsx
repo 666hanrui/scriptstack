@@ -234,7 +234,7 @@ export default function WorkflowValley() {
       <ModuleHeader
         icon={<Wand2 size={24} />}
         eyebrow="Canonical Screenplay Flow"
-        title="八步工作流 / 剧本生成引擎"
+        title="剧本生成向导"
         actions={
           <ActionBar align="right" className="flex-wrap">
             <ActionButton variant="secondary" onClick={() => navigate('/projects')} icon={<FolderKanban size={16} />}>项目库</ActionButton>
@@ -249,14 +249,18 @@ export default function WorkflowValley() {
         { label: 'Workflow Project', value: workflowProjectId || '未绑定', copyable: workflowProjectId || undefined, isMono: true },
         { label: 'Downstream Project', value: currentProjectId || '未绑定', copyable: currentProjectId || undefined, isMono: true },
         { label: 'Script Task', value: currentTaskId || '未生成', copyable: currentTaskId || undefined, isMono: true },
-        { label: 'Backend Step', value: `${backendCurrentStep}` },
+        { label: '当前步骤', value: `${backendCurrentStep} / ${WORKFLOW_STEPS.length}` },
       ]} />
+
+      <div className="rounded-2xl border border-indigo-500/20 bg-indigo-500/10 px-4 py-3 text-sm text-indigo-100/85 leading-6">
+        按左侧顺序推进：先生成当前步骤，满意后点击“批准并进入下一步”。当前页支持单按 Enter 执行下一步；在文本框中用 Shift+Enter 换行。
+      </div>
 
       {error && <div className="rounded-2xl border border-red-500/20 bg-red-500/10 p-4 text-red-200 text-sm flex items-center gap-2"><AlertTriangle size={16} /> {error}</div>}
 
       <div className="grid flex-1 grid-cols-1 xl:grid-cols-[360px_1fr] gap-6 min-h-0">
         <aside className="flex min-h-0 min-w-0 flex-col gap-6">
-          <Panel title="Workflow Stepper" subtitle={projectTitle} className="flex-1" noPadding>
+          <Panel title="步骤导航" subtitle={projectTitle} className="flex-1" noPadding>
             <div className="h-full p-4 overflow-y-auto custom-scrollbar space-y-3">
               {WORKFLOW_STEPS.map((step, index) => {
                 const isActive = currentStep === index;
@@ -282,7 +286,7 @@ export default function WorkflowValley() {
             </div>
           </Panel>
 
-          <Panel title="Genesis Seed" subtitle="当前项目种子" className="shrink-0">
+          <Panel title="项目起点" subtitle="当前故事种子" className="shrink-0">
             <div className="text-sm text-white/70 leading-relaxed max-h-[120px] overflow-y-auto custom-scrollbar whitespace-pre-wrap">{scriptSeed || projectAny.init?.concept || projectAny.init?.name || '未命名项目'}</div>
           </Panel>
         </aside>
