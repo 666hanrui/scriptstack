@@ -1,6 +1,6 @@
 # ScriptStack 用户使用手册
 
-版本：3.0.1  
+版本：3.0.2  
 适用客户端：macOS Apple Silicon、macOS Intel、Windows x64  
 当前 Beta 默认服务器：`http://49.235.153.151`
 
@@ -51,7 +51,7 @@ Windows 安装包通过 GitHub Actions 的 Windows runner 打包，不建议在 
 
 ### macOS 安装
 
-1. 获取 `ScriptStack_3.0.1_universal.dmg` 或类似名称的 DMG 文件。
+1. 获取 `ScriptStack_3.0.2_universal.dmg` 或类似名称的 DMG 文件。
 2. 双击打开 DMG。
 3. 将 `ScriptStack.app` 拖入 `Applications`。
 4. 从启动台或应用程序文件夹打开 ScriptStack。
