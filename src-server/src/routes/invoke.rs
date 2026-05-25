@@ -43,7 +43,7 @@ pub async fn handle_invoke(
         match cmd.as_str() {
             // ── System / Settings ──
             "get_version" => {
-                Ok(serde_json::json!("3.0.2"))
+                Ok(serde_json::json!("3.0.3"))
             }
             "get_app_settings" => {
                 ensure_admin(is_admin)?;
