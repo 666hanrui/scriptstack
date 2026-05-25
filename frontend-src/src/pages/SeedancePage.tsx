@@ -14,6 +14,7 @@ import ContextMetricGrid from '../components/ui/ContextMetricGrid';
 import ActionBar, { ActionButton } from '../components/ui/ActionBar';
 import EmptyState from '../components/ui/EmptyState';
 import ResultViewer from '../components/ui/ResultViewer';
+import FlowChecklist, { type FlowChecklistItem } from '../components/ui/FlowChecklist';
 
 type BusyState = 'analysis' | 'unit' | 'all' | 'load' | 'visual' | '';
 
@@ -81,6 +82,51 @@ export default function SeedancePage() {
   const pendingUnits = Math.max(0, units.length - completeUnits);
   const analysisStatus = analysis ? '已完成' : '待分析';
   const workStatus = busy ? `处理中：${busy}` : units.length > 0 ? `Units ${completeUnits}/${units.length}` : '待生成 Units';
+  const flowItems: FlowChecklistItem[] = useMemo(() => {
+    const hasTask = Boolean(selectedTaskId);
+    const hasVisual = visualOutputs.length > 0;
+    const hasAnalysis = Boolean(analysis);
+    const hasUnits = units.length > 0;
+    const allUnitsReady = hasUnits && completeUnits === units.length;
+    return [
+      {
+        label: '选择剧本任务',
+        detail: hasTask ? '已绑定当前 Script Task。' : '先选择剧本任务，Seedance 会从它恢复分析和单元。',
+        status: hasTask ? 'done' : 'active',
+      },
+      {
+        label: '补齐视觉标准件',
+        detail: busy === 'visual'
+          ? '正在补齐英文 AIPROMPT。'
+          : hasVisual
+            ? `已匹配 ${visualOutputs.length} 个视觉标准件。`
+            : '先补齐人物、场景、道具的英文视觉锚点。',
+        status: !hasTask ? 'pending' : busy === 'visual' ? 'working' : hasVisual ? 'done' : 'active',
+      },
+      {
+        label: 'Phase A-D 分析',
+        detail: busy === 'analysis'
+          ? '正在拆分视频结构与 Seedance Units。'
+          : hasAnalysis
+            ? `分析完成，当前有 ${units.length} 个 Unit。`
+            : '点击 Phase A-D，先生成镜头单元框架。',
+        status: !hasTask || !hasVisual ? 'pending' : busy === 'analysis' ? 'working' : hasAnalysis ? 'done' : 'active',
+      },
+      {
+        label: '生成镜头单元',
+        detail: busy === 'all'
+          ? `正在逐条生成，已完成 ${completeUnits}/${units.length}。`
+          : busy === 'unit'
+            ? `正在生成第 ${activeUnitIndex + 1} 个 Unit。`
+            : allUnitsReady
+              ? '全部 Unit 已生成完成。'
+              : hasUnits
+                ? `还有 ${pendingUnits} 个 Unit 待生成。`
+                : 'A-D 完成后，再生成单个或全部 Unit。',
+        status: !hasAnalysis ? 'pending' : busy === 'all' || busy === 'unit' ? 'working' : allUnitsReady ? 'done' : 'active',
+      },
+    ];
+  }, [activeUnitIndex, analysis, busy, completeUnits, pendingUnits, selectedTaskId, units.length, visualOutputs.length]);
 
   const mergeVisualOutputs = (rows: any[]) => {
     setVisualOutputs((prev) => {
@@ -304,6 +350,7 @@ export default function SeedancePage() {
       />
 
       <ContextMetricGrid metrics={[{ label: 'Project', value: currentProjectId || '未绑定', copyable: currentProjectId || undefined, isMono: true }, { label: 'Script Task', value: selectedTaskId || '未选择', copyable: selectedTaskId || undefined, isMono: true }, { label: 'A-D 分析', value: analysisStatus }, { label: 'Units', value: `${completeUnits}/${units.length} done · ${pendingUnits} pending` }, { label: '英文视觉标准件', value: `${visualOutputs.length}` }]} />
+      <FlowChecklist title="Seedance 生成路径" items={flowItems} />
       {!selectedTaskId && <div className="rounded-2xl border border-yellow-500/20 bg-yellow-500/10 p-4 text-yellow-100 text-sm">请选择 script task。Seedance V5 以 script task 作为恢复主键。</div>}
       {error && <div className="rounded-2xl border border-red-500/20 bg-red-500/10 p-4 text-red-200 text-sm flex items-center gap-2"><AlertTriangle size={16} /> {error}</div>}
       {selectedTaskId && visualOutputs.length === 0 && <div className="rounded-2xl border border-yellow-500/20 bg-yellow-500/10 p-4 text-yellow-100 text-sm">Seedance 现在只消费英文 AIPROMPT 视觉标准件。请先补齐，或到视觉工坊逐个生成。</div>}

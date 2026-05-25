@@ -32,6 +32,7 @@ export const useAppStore = create<AppState>()(
           currentWorkflowProjectId: state.currentWorkflowProjectId,
           currentTaskId: state.currentTaskId,
           currentStep: state.currentStep,
+          sidebarPinned: state.sidebarPinned,
         }),
       }
     ),

@@ -37,25 +37,13 @@ function AppRoutes() {
 
         <Route path="workflow" element={<WorkflowValley />} />
 
-        <Route path="assets" element={
-          <RouteGuard requireTaskId><AssetsForge /></RouteGuard>
-        } />
+        <Route path="assets" element={<AssetsForge />} />
         <Route path="image" element={<Navigate to="/visual-prompts" replace />} />
-        <Route path="video" element={
-          <RouteGuard requireTaskId><PromptLab kind="video" /></RouteGuard>
-        } />
-        <Route path="seedance" element={
-          <RouteGuard requireTaskId><SeedancePage /></RouteGuard>
-        } />
-        <Route path="frame-prompt" element={
-          <RouteGuard requireTaskId><FramePromptLab /></RouteGuard>
-        } />
-        <Route path="visual-prompts" element={
-          <RouteGuard requireTaskId><VisualPromptForge /></RouteGuard>
-        } />
-        <Route path="storyboard" element={
-          <RouteGuard requireTaskId><StoryboardPromptBuilder /></RouteGuard>
-        } />
+        <Route path="video" element={<PromptLab kind="video" />} />
+        <Route path="seedance" element={<SeedancePage />} />
+        <Route path="frame-prompt" element={<FramePromptLab />} />
+        <Route path="visual-prompts" element={<VisualPromptForge />} />
+        <Route path="storyboard" element={<StoryboardPromptBuilder />} />
       </Route>
     </Routes>
   );

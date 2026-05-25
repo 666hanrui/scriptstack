@@ -14,6 +14,7 @@ import ActionBar, { ActionButton } from '../components/ui/ActionBar';
 import EmptyState from '../components/ui/EmptyState';
 import FormField, { TextArea, TextInput } from '../components/ui/FormField';
 import ResultViewer from '../components/ui/ResultViewer';
+import FlowChecklist, { type FlowChecklistItem } from '../components/ui/FlowChecklist';
 
 function projectIdOfTask(task: ScriptTask) {
   const anyTask = task as any;
@@ -130,6 +131,50 @@ export default function FramePromptLab() {
   const gridGroups = useMemo(() => outputGridGroups(output), [output]);
   const activeShot = shots[activeSceneIndex] || null;
   const activeGroup = seedanceGroups.find((group: any, index: number) => groupSceneIndex(group, index) === activeSceneIndex) || seedanceGroups[activeSceneIndex] || null;
+  const flowItems: FlowChecklistItem[] = useMemo(() => {
+    const hasTask = Boolean(selectedTaskId);
+    const hasVisual = visualOutputs.length > 0;
+    const hasOutline = Boolean(outline);
+    const hasGroups = seedanceGroups.length > 0;
+    return [
+      {
+        label: '选择剧本任务',
+        detail: hasTask ? '已绑定当前 Script Task。' : '先选择一条剧本任务，逐镜链路会以它作为恢复主键。',
+        status: hasTask ? 'done' : 'active',
+      },
+      {
+        label: '补齐视觉标准件',
+        detail: busy === 'visual'
+          ? '正在生成人物、场景、道具的英文 AIPROMPT。'
+          : hasVisual
+            ? `已匹配 ${visualOutputs.length} 个英文视觉标准件。`
+            : '点击自动补齐，系统会先生成缺失 AIPROMPT。',
+        status: !hasTask ? 'pending' : busy === 'visual' ? 'working' : hasVisual ? 'done' : 'active',
+      },
+      {
+        label: '生成并确认 Outline',
+        detail: busy === 'outline'
+          ? '正在把剧本拆成可生成的镜头大纲。'
+          : busy === 'confirm'
+            ? '正在保存当前 Outline，后续逐镜生成会以它为准。'
+            : hasOutline
+              ? `已生成 ${outlineTotal(outline) || shots.length} 个镜头。`
+              : '生成 Outline 后，再进入全量逐镜或单镜重算。',
+        status: !hasTask || !hasVisual ? 'pending' : busy === 'outline' || busy === 'confirm' ? 'working' : hasOutline ? 'done' : 'active',
+      },
+      {
+        label: '逐镜生成 / 修订',
+        detail: busy === 'all'
+          ? '正在全量生成所有镜头提示词。'
+          : busy === 'group'
+            ? `正在重算第 ${activeSceneIndex + 1} 镜。`
+            : hasGroups
+              ? `已有 ${seedanceGroups.length} 组逐镜结果。`
+              : '确认 Outline 后，生成全部镜头或只修订当前镜。',
+        status: !hasOutline ? 'pending' : busy === 'all' || busy === 'group' ? 'working' : hasGroups ? 'done' : 'active',
+      },
+    ];
+  }, [activeSceneIndex, busy, outline, seedanceGroups.length, selectedTaskId, shots.length, visualOutputs.length]);
 
   const mergeVisualOutputs = (rows: any[]) => {
     setVisualOutputs((prev) => {
@@ -360,6 +405,8 @@ export default function FramePromptLab() {
         { label: 'Seedance Groups', value: `${seedanceGroups.length}` },
         { label: '英文视觉标准件', value: `${visualOutputs.length}` },
       ]} />
+
+      <FlowChecklist title="逐镜生成路径" items={flowItems} />
 
       <ProgressNotice busy={busy} />
       {error && <div className="rounded-2xl border border-red-500/20 bg-red-500/10 p-4 text-red-200 text-sm">{error}</div>}
