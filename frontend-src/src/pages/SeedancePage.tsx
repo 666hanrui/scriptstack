@@ -49,6 +49,11 @@ function progressLine(payload: any) {
   return `seedance:${status}${unitPart}${progress}`;
 }
 
+function isMissingVisualStandardsError(err: any) {
+  const message = err instanceof Error ? err.message : String(err || '');
+  return message.includes('缺少英文视觉标准件');
+}
+
 export default function SeedancePage() {
   const { invoke } = useTudouBridge();
   const navigate = useNavigate();
@@ -76,6 +81,62 @@ export default function SeedancePage() {
   const pendingUnits = Math.max(0, units.length - completeUnits);
   const analysisStatus = analysis ? '已完成' : '待分析';
   const workStatus = busy ? `处理中：${busy}` : units.length > 0 ? `Units ${completeUnits}/${units.length}` : '待生成 Units';
+
+  const mergeVisualOutputs = (rows: any[]) => {
+    setVisualOutputs((prev) => {
+      const seen = new Set<string>();
+      return [...rows, ...prev].filter((row) => {
+        const key = row?.id || `${row?.assetType || row?.asset_type || ''}:${row?.assetId || row?.asset_id || ''}:${row?.generationMode || row?.generation_mode || ''}`;
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      });
+    });
+  };
+
+  const generateVisualStandards = async () => {
+    if (!selectedTaskId) throw new Error('请先选择 script task。');
+    const rows = await invoke<any[]>('visual/smart-generate-asset-prompt', {
+      taskId: selectedTaskId,
+      assetTypes: ['character', 'scene', 'prop'],
+      mode: 'video',
+    }, { timeout: 900000 });
+    const list = Array.isArray(rows) ? rows : [];
+    mergeVisualOutputs(list);
+    return list;
+  };
+
+  const runWithVisualAutoRepair = async <T,>(busyState: BusyState, action: () => Promise<T>) => {
+    setBusy(busyState);
+    setError('');
+    try {
+      return await action();
+    } catch (err: any) {
+      if (!isMissingVisualStandardsError(err)) throw err;
+      setError('缺少视觉标准件，正在自动补齐英文 AIPROMPT，补齐后会继续刚才的步骤。');
+      setBusy('visual');
+      await generateVisualStandards();
+      showToast('视觉标准件已自动补齐，继续执行当前步骤');
+      setBusy(busyState);
+      return await action();
+    } finally {
+      setBusy('');
+    }
+  };
+
+  const invokeUnitWithVisualRepair = async (unitIndex: number, busyState: BusyState = 'unit') => {
+    try {
+      await invoke<any>('seedance/run-unit', { taskId: selectedTaskId, unitIndex }, { timeout: 900000 });
+    } catch (err: any) {
+      if (!isMissingVisualStandardsError(err)) throw err;
+      setError('缺少视觉标准件，正在自动补齐英文 AIPROMPT，补齐后会继续生成镜头单元。');
+      setBusy('visual');
+      await generateVisualStandards();
+      showToast('视觉标准件已自动补齐，继续执行当前步骤');
+      setBusy(busyState);
+      await invoke<any>('seedance/run-unit', { taskId: selectedTaskId, unitIndex }, { timeout: 900000 });
+    }
+  };
 
   useEffect(() => { setRealm('valley'); }, [setRealm]);
 
@@ -133,11 +194,11 @@ export default function SeedancePage() {
 
   const runAnalysis = async () => {
     if (!selectedTaskId) return;
-    setBusy('analysis');
-    setError('');
     setProgress(['seedance:phase-ad start']);
     try {
-      const result = await invoke<any>('seedance/phase-ad', { taskId: selectedTaskId }, { timeout: 900000 });
+      const result = await runWithVisualAutoRepair('analysis', () =>
+        invoke<any>('seedance/phase-ad', { taskId: selectedTaskId }, { timeout: 900000 })
+      );
       setAnalysis(result);
       await loadUnits(selectedTaskId, true);
       setProgress((prev) => ['seedance:phase-ad done', ...prev]);
@@ -145,8 +206,6 @@ export default function SeedancePage() {
     } catch (err: any) {
       setError(err.message || 'Seedance A-D 分析失败');
       setProgress((prev) => [`seedance:phase-ad error ${err.message || err}`, ...prev]);
-    } finally {
-      setBusy('');
     }
   };
 
@@ -155,12 +214,7 @@ export default function SeedancePage() {
     setBusy('visual');
     setError('');
     try {
-      const rows = await invoke<any[]>('visual/smart-generate-asset-prompt', {
-        taskId: selectedTaskId,
-        assetTypes: ['character', 'scene', 'prop'],
-        mode: 'video',
-      }, { timeout: 900000 });
-      setVisualOutputs((prev) => [...(Array.isArray(rows) ? rows : []), ...prev]);
+      await generateVisualStandards();
       await loadUnits(selectedTaskId, true);
       showToast('Seedance 视觉标准件已补齐');
     } catch (err: any) {
@@ -177,15 +231,15 @@ export default function SeedancePage() {
     setActiveUnitIndex(unitIndex);
     setProgress((prev) => [`seedance:unit start unit=${unitIndex + 1}`, ...prev]);
     try {
-      await invoke<any>('seedance/run-unit', { taskId: selectedTaskId, unitIndex }, { timeout: 900000 });
+      await runWithVisualAutoRepair('unit', () =>
+        invoke<any>('seedance/run-unit', { taskId: selectedTaskId, unitIndex }, { timeout: 900000 })
+      );
       await loadUnits(selectedTaskId, true);
       setProgress((prev) => [`seedance:unit done unit=${unitIndex + 1}`, ...prev]);
       showToast(`镜头单元 ${unitIndex + 1} 已生成`);
     } catch (err: any) {
       setError(err.message || '单元生成失败');
       setProgress((prev) => [`seedance:unit error unit=${unitIndex + 1} ${err.message || err}`, ...prev]);
-    } finally {
-      setBusy('');
     }
   };
 
@@ -199,7 +253,7 @@ export default function SeedancePage() {
         const unitIndex = unitIndexOf(units[i], i);
         setActiveUnitIndex(unitIndex);
         setProgress((prev) => [`seedance:run-all unit=${unitIndex + 1}/${units.length} start`, ...prev]);
-        await invoke<any>('seedance/run-unit', { taskId: selectedTaskId, unitIndex }, { timeout: 900000 });
+        await invokeUnitWithVisualRepair(unitIndex, 'all');
         await loadUnits(selectedTaskId, true);
         setProgress((prev) => [`seedance:run-all unit=${unitIndex + 1}/${units.length} done`, ...prev]);
       }

@@ -95,6 +95,11 @@ function ProgressNotice({ busy }: { busy: string }) {
   );
 }
 
+function isMissingVisualStandardsError(err: any) {
+  const message = err instanceof Error ? err.message : String(err || '');
+  return message.includes('缺少英文视觉标准件');
+}
+
 export default function FramePromptLab() {
   const { invoke } = useTudouBridge();
   const navigate = useNavigate();
@@ -125,6 +130,48 @@ export default function FramePromptLab() {
   const gridGroups = useMemo(() => outputGridGroups(output), [output]);
   const activeShot = shots[activeSceneIndex] || null;
   const activeGroup = seedanceGroups.find((group: any, index: number) => groupSceneIndex(group, index) === activeSceneIndex) || seedanceGroups[activeSceneIndex] || null;
+
+  const mergeVisualOutputs = (rows: any[]) => {
+    setVisualOutputs((prev) => {
+      const seen = new Set<string>();
+      return [...rows, ...prev].filter((row) => {
+        const key = row?.id || `${row?.assetType || row?.asset_type || ''}:${row?.assetId || row?.asset_id || ''}:${row?.generationMode || row?.generation_mode || ''}`;
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      });
+    });
+  };
+
+  const generateVisualStandards = async () => {
+    if (!selectedTaskId) throw new Error('请先选择 script task。');
+    const rows = await invoke<any[]>('visual/smart-generate-asset-prompt', {
+      taskId: selectedTaskId,
+      assetTypes: ['character', 'scene', 'prop'],
+      mode: 'storyboard',
+    }, { timeout: 900000 });
+    const list = Array.isArray(rows) ? rows : [];
+    mergeVisualOutputs(list);
+    return list;
+  };
+
+  const runWithVisualAutoRepair = async <T,>(busyState: typeof busy, action: () => Promise<T>) => {
+    setBusy(busyState);
+    setError('');
+    try {
+      return await action();
+    } catch (err: any) {
+      if (!isMissingVisualStandardsError(err)) throw err;
+      setError('缺少视觉标准件，正在自动补齐英文 AIPROMPT，补齐后会继续刚才的步骤。');
+      setBusy('visual');
+      await generateVisualStandards();
+      showToast('视觉标准件已自动补齐，继续执行当前步骤');
+      setBusy(busyState);
+      return await action();
+    } finally {
+      setBusy('');
+    }
+  };
 
   const refreshAll = async (taskId = selectedTaskId) => {
     if (!taskId) return;
@@ -173,17 +220,15 @@ export default function FramePromptLab() {
 
   const generateOutline = async () => {
     if (!selectedTaskId) return setError('请先选择 script task。');
-    setBusy('outline');
-    setError('');
     try {
-      const result = await invoke<any>('prompt/generate-outline', { taskId: selectedTaskId }, { timeout: 900000 });
+      const result = await runWithVisualAutoRepair('outline', () =>
+        invoke<any>('prompt/generate-outline', { taskId: selectedTaskId }, { timeout: 900000 })
+      );
       setOutline(result?.outline || result);
       showToast('分镜大纲已生成');
       await refreshAll(selectedTaskId);
     } catch (err: any) {
       setError(err.message || '生成分镜大纲失败');
-    } finally {
-      setBusy('');
     }
   };
 
@@ -204,37 +249,33 @@ export default function FramePromptLab() {
 
   const runAll = async () => {
     if (!selectedTaskId) return setError('请先选择 script task。');
-    setBusy('all');
-    setError('');
     try {
-      const result = await invoke<any>('prompt/run-generation', { taskId: selectedTaskId }, { timeout: 900000 });
+      const result = await runWithVisualAutoRepair('all', () =>
+        invoke<any>('prompt/run-generation', { taskId: selectedTaskId }, { timeout: 900000 })
+      );
       setOutput({ ...(output || {}), seedanceGroupsJson: JSON.stringify(result?.seedanceGroups || [], null, 2), generationModel: result?.generationModel, createdAt: result?.generatedAt });
       setEditedSeedanceGroups(JSON.stringify(result?.seedanceGroups || [], null, 2));
       showToast('逐镜提示词已全部生成');
       await refreshAll(selectedTaskId);
     } catch (err: any) {
       setError(err.message || '逐镜生成失败');
-    } finally {
-      setBusy('');
     }
   };
 
   const runGroup = async () => {
     if (!selectedTaskId) return setError('请先选择 script task。');
-    setBusy('group');
-    setError('');
     try {
       const payload: any = { taskId: selectedTaskId, sceneIndex: activeSceneIndex };
       if (reviewFeedback.trim()) payload.reviewFeedback = reviewFeedback;
       if (originalSeedance.trim()) payload.originalSeedance = originalSeedance;
-      const result = await invoke<any>('prompt/run-group-generation', payload, { timeout: 900000 });
+      const result = await runWithVisualAutoRepair('group', () =>
+        invoke<any>('prompt/run-group-generation', payload, { timeout: 900000 })
+      );
       showToast(`分镜 ${activeSceneIndex + 1} 已重新生成`);
       if (result?.seedanceGroups) setOriginalSeedance(JSON.stringify(result.seedanceGroups[0] || result.seedanceGroups, null, 2));
       await refreshAll(selectedTaskId);
     } catch (err: any) {
       setError(err.message || '单镜生成失败');
-    } finally {
-      setBusy('');
     }
   };
 
@@ -274,12 +315,7 @@ export default function FramePromptLab() {
     setBusy('visual');
     setError('');
     try {
-      const rows = await invoke<any[]>('visual/smart-generate-asset-prompt', {
-        taskId: selectedTaskId,
-        assetTypes: ['character', 'scene', 'prop'],
-        mode: 'storyboard',
-      }, { timeout: 900000 });
-      setVisualOutputs((prev) => [...(Array.isArray(rows) ? rows : []), ...prev]);
+      await generateVisualStandards();
       showToast('逐镜视觉标准件已补齐');
       await refreshAll(selectedTaskId);
     } catch (err: any) {
