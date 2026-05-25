@@ -7,6 +7,10 @@ on:
         description: "Public ScriptStack API base URL"
         required: true
         default: "http://49.235.153.151"
+      release_tag:
+        description: "Optional GitHub Release tag to publish after packaging"
+        required: false
+        default: ""
   push:
     tags:
       - "v*"
@@ -93,3 +97,34 @@ jobs:
             target/**/bundle/msi/*.msi
             target/**/bundle/nsis/*.exe
           if-no-files-found: error
+
+  publish-release:
+    name: Publish Release Assets
+    needs: [mac-universal, windows-x64]
+    if: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.release_tag != '' }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Download packaged artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: release-artifacts
+
+      - name: Publish GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.event.inputs.release_tag }}
+          name: ScriptStack ${{ github.event.inputs.release_tag }}
+          target_commitish: ${{ github.sha }}
+          make_latest: true
+          body: |
+            ScriptStack ${{ github.event.inputs.release_tag }} beta package.
+
+            - API base: ${{ env.VITE_API_BASE }}
+            - Windows x64: MSI + EXE
+            - macOS: Universal DMG for Apple Silicon and Intel
+          files: |
+            release-artifacts/**/*.dmg
+            release-artifacts/**/*.exe
+            release-artifacts/**/*.msi
