@@ -47,6 +47,8 @@ pub struct ProjectInit {
     pub chinese: Option<bool>,
     #[serde(default)]
     pub master: Option<String>,
+    #[serde(alias = "client_request_id", default)]
+    pub client_request_id: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -232,7 +234,7 @@ impl ProjectRecord {
                 init: serde_json::from_str(&init_json).unwrap_or_else(|_| ProjectInit {
                     name: None, concept: None, duration: None, path: None, imported_script: None,
                     imported_file_name: None, format: None, ultrashort_mode: None, genres: None,
-                    chinese: None, master: None,
+                    chinese: None, master: None, client_request_id: None,
                 }),
                 created_at: row.get(3).unwrap_or_default(),
                 updated_at: row.get(4).unwrap_or_default(),
@@ -285,7 +287,7 @@ impl ProjectRecord {
             let init: ProjectInit = serde_json::from_str(&init_json).unwrap_or_else(|_| ProjectInit {
                 name: None, concept: None, duration: None, path: None, imported_script: None,
                 imported_file_name: None, format: None, ultrashort_mode: None, genres: None,
-                chinese: None, master: None,
+                chinese: None, master: None, client_request_id: None,
             });
             let done_steps: Vec<u8> = serde_json::from_str(&done_steps_json).unwrap_or_else(|_| vec![0]);
             let steps: HashMap<String, StepBucket> = serde_json::from_str(&steps_json).unwrap_or_default();
@@ -325,9 +327,41 @@ impl ProjectRecord {
 }
 
 pub fn create_project(conn: &Connection, user_id: &str, init: ProjectInit) -> ProjectRecord {
+    if let Some(existing) = find_by_client_request_id(conn, user_id, init.client_request_id.as_deref()) {
+        return existing;
+    }
     let rec = ProjectRecord::create(user_id, init);
     let _ = rec.save(conn);
     rec
+}
+
+fn find_by_client_request_id(conn: &Connection, user_id: &str, request_id: Option<&str>) -> Option<ProjectRecord> {
+    let request_id = request_id?.trim();
+    if request_id.is_empty() {
+        return None;
+    }
+
+    let mut stmt = conn
+        .prepare(
+            r#"
+            SELECT id
+            FROM screenplay_projects
+            WHERE user_id = ?1
+            ORDER BY created_at DESC
+            LIMIT 200
+            "#,
+        )
+        .ok()?;
+    let rows = stmt.query_map(params![user_id], |row| row.get::<_, String>(0)).ok()?;
+
+    for row in rows.flatten() {
+        if let Some(project) = ProjectRecord::load(conn, &row, user_id) {
+            if project.init.client_request_id.as_deref() == Some(request_id) {
+                return Some(project);
+            }
+        }
+    }
+    None
 }
 
 pub fn load_project(conn: &Connection, project_id: &str, user_id: &str) -> Option<ProjectRecord> { 

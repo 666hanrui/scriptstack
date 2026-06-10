@@ -78,11 +78,11 @@ async fn register(
     let refresh_token = generate_refresh_token();
     let email = req.email.unwrap_or_default();
 
-    let db = state.db.clone();
+    let db_path = state.db_path.clone();
     let req_username = req.username.clone();
     let rt_clone = refresh_token.clone();
     let user_id = tokio::task::spawn_blocking(move || -> Result<String, AppError> {
-        let conn = db.lock().unwrap_or_else(|e| e.into_inner());
+        let conn = crate::db::open_database_connection(std::path::Path::new(&db_path))?;
         // 检查用户名是否已存在
         let mut stmt = conn.prepare("SELECT id FROM users WHERE username = ?1")?;
         if stmt.exists([&req_username])? {
@@ -122,10 +122,10 @@ async fn login(
     State(state): State<AppState>,
     Json(req): Json<LoginReq>,
 ) -> Result<Json<AuthRes>, AppError> {
-    let db = state.db.clone();
+    let db_path = state.db_path.clone();
     let req_username = req.username.clone();
     let (user_id, db_hash, salt, mut refresh_token, role) = tokio::task::spawn_blocking(move || -> Result<(String, String, String, String, String), AppError> {
-        let conn = db.lock().unwrap_or_else(|e| e.into_inner());
+        let conn = crate::db::open_database_connection(std::path::Path::new(&db_path))?;
         let mut stmt = conn.prepare("SELECT id, password_hash, salt, refresh_token, COALESCE(role, 'user') FROM users WHERE username = ?1")?;
         let mut rows = stmt.query([&req_username])?;
         
@@ -149,21 +149,21 @@ async fn login(
     // 如果没有 refresh_token，生成一个并更新
     if refresh_token.is_empty() {
         refresh_token = generate_refresh_token();
-        let db = state.db.clone();
+        let db_path = state.db_path.clone();
         let rt = refresh_token.clone();
         let uid = user_id.clone();
         tokio::task::spawn_blocking(move || -> Result<(), AppError> {
-            let conn = db.lock().unwrap_or_else(|e| e.into_inner());
+            let conn = crate::db::open_database_connection(std::path::Path::new(&db_path))?;
             conn.execute("UPDATE users SET refresh_token = ?1 WHERE id = ?2", (&rt, &uid))?;
             Ok(())
         }).await.map_err(|e| AppError::Internal(e.to_string()))??;
     }
 
     {
-        let db = state.db.clone();
+        let db_path = state.db_path.clone();
         let uid = user_id.clone();
         tokio::task::spawn_blocking(move || -> Result<(), AppError> {
-            let conn = db.lock().unwrap_or_else(|e| e.into_inner());
+            let conn = crate::db::open_database_connection(std::path::Path::new(&db_path))?;
             conn.execute(
                 "UPDATE users SET last_login_at = datetime('now'), last_seen_at = datetime('now') WHERE id = ?1",
                 [&uid],
@@ -190,9 +190,9 @@ async fn refresh(
     State(state): State<AppState>,
     Json(req): Json<RefreshReq>,
 ) -> Result<Json<AuthRes>, AppError> {
-    let db = state.db.clone();
+    let db_path = state.db_path.clone();
     let (user_id, username, role) = tokio::task::spawn_blocking(move || -> Result<(String, String, String), AppError> {
-        let conn = db.lock().unwrap_or_else(|e| e.into_inner());
+        let conn = crate::db::open_database_connection(std::path::Path::new(&db_path))?;
         let mut stmt = conn.prepare("SELECT id, username, COALESCE(role, 'user') FROM users WHERE refresh_token = ?1")?;
         let mut rows = stmt.query([&req.refresh_token])?;
         
@@ -208,11 +208,11 @@ async fn refresh(
 
     // 更新 refresh_token 以实现轮换 (Rotation)
     let new_refresh_token = generate_refresh_token();
-    let db = state.db.clone();
+    let db_path = state.db_path.clone();
     let rt = new_refresh_token.clone();
     let uid = user_id.clone();
     tokio::task::spawn_blocking(move || -> Result<(), AppError> {
-        let conn = db.lock().unwrap_or_else(|e| e.into_inner());
+        let conn = crate::db::open_database_connection(std::path::Path::new(&db_path))?;
         conn.execute(
             "UPDATE users SET refresh_token = ?1, last_seen_at = datetime('now') WHERE id = ?2",
             (&rt, &uid),

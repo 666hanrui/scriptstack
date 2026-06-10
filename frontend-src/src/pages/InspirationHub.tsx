@@ -49,6 +49,7 @@ export default function InspirationHub() {
   const [importedFile, setImportedFile] = useState<any>(null);
   const [error, setError] = useState('');
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const createRequestIdRef = useRef('');
   const controls = useAnimation();
 
   useEffect(() => {
@@ -81,6 +82,7 @@ export default function InspirationHub() {
     if (!canStart) return;
     setError('');
     const init = {
+      clientRequestId: createRequestIdRef.current || (createRequestIdRef.current = `workflow-${Date.now()}-${Math.random().toString(36).slice(2)}`),
       name: name.trim() || concept.slice(0, 30),
       concept,
       duration,
@@ -103,11 +105,18 @@ export default function InspirationHub() {
       setCurrentTaskId(null);
       setScriptSeed(concept);
       showToast({ message: '工作流项目已创建', type: 'success' });
+      createRequestIdRef.current = '';
       await controls.start({ scale: 0.98, opacity: 0, filter: 'blur(16px)', transition: { duration: 0.35, ease: 'easeInOut' } });
       navigate('/workflow');
     } catch (err: any) {
       setError(err.message || '创世引擎点火失败');
     }
+  };
+
+  const submitOnEnter = (event: any) => {
+    if (event.key !== 'Enter' || event.shiftKey || event.metaKey || event.ctrlKey || event.altKey) return;
+    event.preventDefault();
+    handleIgnite();
   };
 
   return (
@@ -116,7 +125,7 @@ export default function InspirationHub() {
         <ModuleHeader
           icon={<Sparkles size={26} />}
           eyebrow="Inspiration Hub"
-          title="新建工作流"
+          title="新建剧本生成项目"
           actions={
             <ActionBar align="right" className="flex-wrap">
               <ActionButton variant="secondary" onClick={() => navigate('/projects')} icon={<FolderKanban size={16} />}>项目库</ActionButton>
@@ -137,7 +146,7 @@ export default function InspirationHub() {
                   ref={textareaRef as any}
                   value={localSeed}
                   onChange={(event: any) => setLocalSeed(event.target.value)}
-                  onKeyDown={(event: any) => { if ((event.metaKey || event.ctrlKey) && event.key === 'Enter') handleIgnite(); }}
+                  onKeyDown={submitOnEnter}
                   rows={3}
                   placeholder="例如：一个在赛博朋克废墟中寻找旧时代黑胶唱片的失明武士..."
                 />
@@ -149,7 +158,7 @@ export default function InspirationHub() {
               actions={<ActionButton size="sm" variant="secondary" onClick={selectImportFile} icon={<Upload size={14} />}>选择文件</ActionButton>}
             >
                <FormField label="剧本正文">
-                 <TextArea value={importedScript} onChange={(event: any) => setImportedScript(event.target.value)} rows={3} placeholder="粘贴单集内容，流程将从第 1 步破题开始。" />
+                 <TextArea value={importedScript} onChange={(event: any) => setImportedScript(event.target.value)} onKeyDown={submitOnEnter} rows={3} placeholder="粘贴单集内容，流程将从第 1 步故事定位开始。" />
                  {importedScript.length > 0 && (
                    <div className={`mt-1.5 text-xs ${importedScript.length > 15000 ? 'text-yellow-400' : 'text-white/30'}`}>
                      字数: {importedScript.length.toLocaleString()}

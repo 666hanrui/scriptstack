@@ -652,6 +652,30 @@ export default function StoryboardPromptBuilder() {
     };
   };
 
+  const downloadWebBundle = (
+    bundleName: string,
+    files: Array<{ relativePath: string; content: string; encoding?: string }>,
+    skippedImages: Array<{ shot: number; imageId: string; reason: string }>,
+  ) => {
+    const payload = {
+      bundleName,
+      exportedAt: new Date().toISOString(),
+      format: 'scriptstack-storyboard-web-bundle-v1',
+      note: '网页端无法直接写入本地文件夹，因此下载为单个 JSON 包。桌面端会导出为文件夹资料包。',
+      skippedImages,
+      files,
+    };
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${bundleName}.json`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  };
+
   const exportLocalBundle = async () => {
     if (!currentTaskId || shotCards.length === 0) {
       showToast({ message: '没有可导出的故事版镜头', type: 'error' });
@@ -759,17 +783,29 @@ export default function StoryboardPromptBuilder() {
         }, null, 2),
       });
 
-      const result = await invoke<any>('storyboard/export-local', {
-        bundleName,
-        files,
-        openFolder: true,
-      }, { timeout: 180000 });
+      try {
+        const result = await invoke<any>('storyboard/export-local', {
+          bundleName,
+          files,
+          openFolder: true,
+        }, { timeout: 180000, hideGlobalError: true });
 
-      if (!result?.cancelled) {
-        showToast({
-          message: `故事版资料包已导出：${result.filesWritten || files.length} 个文件`,
-          type: skippedImages.length ? 'info' : 'success',
-        });
+        if (!result?.cancelled) {
+          showToast({
+            message: `故事版资料包已导出：${result.filesWritten || files.length} 个文件`,
+            type: skippedImages.length ? 'info' : 'success',
+          });
+        }
+      } catch (err: any) {
+        if (String(err?.message || '').includes('桌面客户端')) {
+          downloadWebBundle(bundleName, files, skippedImages);
+          showToast({
+            message: `网页端已下载故事版 JSON 包：${files.length} 个文件条目`,
+            type: skippedImages.length ? 'info' : 'success',
+          });
+        } else {
+          throw err;
+        }
       }
     } catch (err: any) {
       showToast({ message: err?.message || '故事版导出失败', type: 'error' });

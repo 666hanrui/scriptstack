@@ -11,9 +11,35 @@
 // - 如需桌面客户端连接远端，可在构建时注入 VITE_API_BASE。
 const env = (typeof import.meta !== "undefined" && (import.meta as any).env) || {};
 const API_BASE = env?.VITE_API_BASE || (env?.DEV ? "http://localhost:3000" : "");
+const SESSION_AUTH_KEY = "scriptstack-session-auth";
+
+export function setSessionAuth(token?: string, refreshToken?: string) {
+  try {
+    if (!token) {
+      sessionStorage.removeItem(SESSION_AUTH_KEY);
+      return;
+    }
+    sessionStorage.setItem(SESSION_AUTH_KEY, JSON.stringify({ token, refreshToken: refreshToken || "" }));
+  } catch {
+    // sessionStorage may be unavailable in hardened webviews.
+  }
+}
+
+export function clearSessionAuth() {
+  setSessionAuth("", "");
+}
 
 /** 获取存储的 JWT token */
 function getToken(): string {
+  try {
+    const raw = sessionStorage.getItem(SESSION_AUTH_KEY);
+    if (raw) {
+      const session = JSON.parse(raw);
+      if (session?.token) return session.token;
+    }
+  } catch {
+    // Fall through to legacy storage cleanup.
+  }
   try {
     const raw = localStorage.getItem("scriptstack-core-storage");
     if (!raw) return "";
@@ -25,6 +51,7 @@ function getToken(): string {
 }
 
 function clearStoredUser() {
+  clearSessionAuth();
   try {
     const raw = localStorage.getItem("scriptstack-core-storage");
     if (!raw) return;

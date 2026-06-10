@@ -211,6 +211,115 @@ function isTauriRuntime() {
   return typeof (window as any).__TAURI_INTERNALS__ !== 'undefined';
 }
 
+function readFileAsDataUrl(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result || ""));
+    reader.onerror = () => reject(reader.error || new Error("文件读取失败"));
+    reader.readAsDataURL(file);
+  });
+}
+
+function pickBrowserFile(accept: string): Promise<File | null> {
+  return new Promise((resolve) => {
+    const input = document.createElement("input");
+    input.type = "file";
+    input.accept = accept;
+    input.style.position = "fixed";
+    input.style.left = "-9999px";
+    input.style.opacity = "0";
+    document.body.appendChild(input);
+    input.addEventListener(
+      "change",
+      () => {
+        const file = input.files?.[0] || null;
+        input.remove();
+        resolve(file);
+      },
+      { once: true }
+    );
+    input.click();
+  });
+}
+
+async function selectTextFileInBrowser() {
+  const file = await pickBrowserFile(".txt,.md,.markdown,.docx,.pdf,text/plain,text/markdown,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document");
+  if (!file) return { cancelled: true, content: "" };
+  const base64 = await readFileAsDataUrl(file);
+  const parsed = await httpInvoke<any>("parse_uploaded_source_file", {
+    fileName: file.name,
+    fileSize: file.size,
+    mimeType: file.type || "application/octet-stream",
+    base64,
+  });
+  return {
+    cancelled: false,
+    filePath: "",
+    fileName: parsed.fileName || file.name,
+    fileHash: parsed.fileHash,
+    fileSize: parsed.fileSize || file.size,
+    mimeType: parsed.mimeType || file.type,
+    encoding: parsed.encoding,
+    materialType: parsed.materialType,
+    content: parsed.content || "",
+    source: "browser-upload",
+  };
+}
+
+async function selectImageFileInBrowser() {
+  const file = await pickBrowserFile("image/*");
+  if (!file) return { cancelled: true, base64: "", mimeType: "" };
+  const base64 = await readFileAsDataUrl(file);
+  return {
+    cancelled: false,
+    fileName: file.name,
+    fileSize: file.size,
+    mimeType: file.type || "image/png",
+    base64,
+  };
+}
+
+function classifyBridgeError(action: string, backendCommand: string, message: string) {
+  if (message.includes("缺少英文视觉标准件")) {
+    return {
+      title: "缺少视觉标准件",
+      action: `${action} → ${backendCommand}`,
+      details: message,
+      suggestion: "请先在视觉提示词工坊点击“补齐全部缺失”或“自动补齐视觉标准件”，完成后再继续生成分镜。",
+    };
+  }
+  if (message.includes("此操作需要桌面客户端")) {
+    return {
+      title: "当前网页模式不能执行本地导出",
+      action: `${action} → ${backendCommand}`,
+      details: message,
+      suggestion: "网页端将改走浏览器下载；桌面端仍会弹出本地文件夹选择器。",
+    };
+  }
+  if (message.includes("Failed to fetch")) {
+    return {
+      title: "无法连接服务器",
+      action: `${action} → ${backendCommand}`,
+      details: message,
+      suggestion: "请检查网络、服务器域名和 HTTPS 状态。若登录后业务接口失败，优先检查服务端 /api/invoke 和 /api/stream 是否可访问。",
+    };
+  }
+  if (message.includes("[IPC Timeout]")) {
+    return {
+      title: "请求等待超时",
+      action: `${action} → ${backendCommand}`,
+      details: message,
+      suggestion: "长任务可能仍在运行。请稍等后点击恢复；如果频繁出现，需要检查服务端是否被长任务阻塞。",
+    };
+  }
+  return {
+    title: "底层通信错误",
+    action: `${action} → ${backendCommand}`,
+    details: message,
+    suggestion: "操作已被打断。请检查输入参数，或返回项目库尝试恢复上下文。",
+  };
+}
+
 const DESKTOP_ONLY_COMMANDS = new Set([
   "export_storyboard_bundle",
 ]);
@@ -221,6 +330,54 @@ const STREAM_COMMANDS = new Set([
   "screenplay_regenerate_checkpoint",
   "save_script_generation",
 ]);
+
+const VERY_LONG_COMMANDS = new Set([
+  "run_asset_extraction",
+  "run_script_review",
+  "save_script_generation",
+  "generate_outline",
+  "confirm_outline",
+  "run_prompt_generation",
+  "run_prompt_group_generation",
+  "run_prompt_quality_check",
+  "seedance_run_phase_ad",
+  "seedance_run_unit",
+  "seedance_run_all",
+  "visual_smart_generate_asset_prompt",
+  "visual_batch_generate",
+  "longform_incubate_idea",
+  "screenplay_generate_step",
+  "screenplay_selfcheck_step",
+  "screenplay_regenerate_checkpoint",
+  "screenplay_finalize_to_script_task",
+]);
+
+const MEDIUM_COMMANDS = new Set([
+  "screenplay_get_project",
+  "screenplay_list_recent_projects",
+  "get_recent_script_tasks",
+  "get_recent_image_tasks",
+  "get_recent_video_tasks",
+  "get_projects",
+  "import_source_file",
+  "parse_uploaded_source_file",
+  "segment_source_material",
+  "confirm_source_chunks",
+  "create_episode_from_sources",
+  "generate_episode_snapshot",
+  "generate_next_episode_options",
+  "create_asset_sheet_plan",
+  "crop_asset_sheet",
+  "asset_image_save_file",
+  "export_storyboard_bundle",
+]);
+
+function defaultTimeoutForCommand(command: string) {
+  if (VERY_LONG_COMMANDS.has(command)) return 900000;
+  if (MEDIUM_COMMANDS.has(command)) return 120000;
+  if (command.startsWith("visual_") || command.startsWith("seedance_") || command.startsWith("screenplay_")) return 180000;
+  return 60000;
+}
 
 /**
  * 将 Tauri IPC 的 wrapArgs 格式展平为统一的 args 对象（给 HTTP /api/invoke 用）
@@ -264,13 +421,13 @@ export const useTudouBridge = () => {
     async <T = any>(
       action: string,
       payload: Payload = {},
-      options: { timeout?: number; silent?: boolean; hideGlobalError?: boolean } = { timeout: 30000, silent: false, hideGlobalError: false }
+      options: { timeout?: number; silent?: boolean; hideGlobalError?: boolean } = {}
     ): Promise<T> => {
       const spec = resolveSpec(action);
       const backendCommand = spec.command;
       const backendArgs = wrapArgs(spec.wrap, payload);
       const reqId = `${backendCommand}-${JSON.stringify(backendArgs)}`;
-      const effectiveTimeout = options.timeout ?? (backendCommand === "screenplay_get_project" ? 120000 : 30000);
+      const effectiveTimeout = options.timeout ?? defaultTimeoutForCommand(backendCommand);
 
       const existing = activeRequests.current.get(reqId);
       if (existing) return existing as Promise<T>;
@@ -278,9 +435,10 @@ export const useTudouBridge = () => {
 
       const request = (async () => {
         try {
-          const timeoutPromise = new Promise<never>((_, reject) =>
-            setTimeout(() => reject(new Error(`[IPC Timeout] Command ${backendCommand} 无响应`)), effectiveTimeout)
-          );
+          let timeoutId: ReturnType<typeof setTimeout> | undefined;
+          const timeoutPromise = new Promise<never>((_, reject) => {
+            timeoutId = setTimeout(() => reject(new Error(`[IPC Timeout] Command ${backendCommand} 无响应`)), effectiveTimeout);
+          });
 
           const fetchPromise = (async () => {
             // 这些命令保留在 Tauri 本地薄壳中（需要原生能力：文件对话框等）
@@ -288,6 +446,12 @@ export const useTudouBridge = () => {
 
             if (LOCAL_ONLY_COMMANDS.includes(backendCommand)) {
               if (!isTauriRuntime()) {
+                if (backendCommand === "select_text_file") {
+                  return await selectTextFileInBrowser() as T;
+                }
+                if (backendCommand === "select_image_file") {
+                  return await selectImageFileInBrowser() as T;
+                }
                 if (DESKTOP_ONLY_COMMANDS.has(backendCommand)) {
                   throw new Error("此操作需要桌面客户端：请在 Tauri 应用中导出本地资料包。");
                 }
@@ -342,18 +506,17 @@ export const useTudouBridge = () => {
             return res;
           })();
 
-          return await Promise.race([fetchPromise, timeoutPromise]);
+          try {
+            return await Promise.race([fetchPromise, timeoutPromise]);
+          } finally {
+            if (timeoutId) clearTimeout(timeoutId);
+          }
         } catch (err: any) {
           const hideGlobalError = options?.hideGlobalError ?? false;
           const errorMessage = err instanceof Error ? err.message : String(err);
 
           if (!hideGlobalError) {
-            useAppStore.getState().setGlobalError({
-              title: "底层通信断裂 (IPC Error)",
-              action: `${action} → ${backendCommand}`,
-              details: errorMessage,
-              suggestion: "操作已被打断。请检查输入参数，或返回项目库尝试恢复上下文。",
-            });
+            useAppStore.getState().setGlobalError(classifyBridgeError(action, backendCommand, errorMessage));
           }
 
           throw err;

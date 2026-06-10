@@ -3,7 +3,7 @@ import path from "node:path";
 
 const root = process.cwd();
 const viteBin = path.join(root, "node_modules", ".bin", process.platform === "win32" ? "vite.cmd" : "vite");
-const apiBase = process.env.VITE_API_BASE || "https://544834.xyz";
+const apiBase = process.env.VITE_API_BASE || "http://49.235.153.151";
 
 const child = spawn(
   viteBin,
@@ -14,6 +14,7 @@ const child = spawn(
       ...process.env,
       VITE_API_BASE: apiBase,
     },
+    shell: process.platform === "win32",
     stdio: "inherit",
   },
 );

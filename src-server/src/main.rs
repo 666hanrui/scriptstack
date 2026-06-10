@@ -1,5 +1,3 @@
-use std::sync::{Arc, Mutex};
-use rusqlite::Connection;
 use tower_http::cors::{Any, CorsLayer};
 use tower_http::trace::TraceLayer;
 
@@ -17,7 +15,7 @@ use config::ServerConfig;
 /// 全局应用状态
 #[derive(Clone)]
 pub struct AppState {
-    pub db: Arc<Mutex<Connection>>,
+    pub db_path: String,
     pub config: ServerConfig,
 }
 
@@ -39,10 +37,11 @@ async fn main() {
     }
     let conn = db::init_database(db_path).expect("Failed to initialize database");
     db::schema::ensure_admin_user(&conn, &config).expect("Failed to seed admin user");
+    drop(conn);
     
     // 构建状态池
     let state = AppState {
-        db: Arc::new(Mutex::new(conn)),
+        db_path: db_path.to_string_lossy().to_string(),
         config: config.clone(),
     };
 

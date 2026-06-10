@@ -15,20 +15,20 @@ export interface NavItem {
 }
 
 export const WORKFLOW_STEPS: WorkflowStep[] = [
-  { id: 1, title: "破题", desc: "商业钩子、核心冲突、类型承诺", slug: "concept" },
-  { id: 2, title: "人物", desc: "主角欲望、反派压力与关系张力", slug: "characters" },
-  { id: 3, title: "世界", desc: "规则、场域、代价与视觉母题", slug: "world" },
-  { id: 4, title: "大纲", desc: "三幕推进与关键转折", slug: "outline" },
-  { id: 5, title: "分场", desc: "场景节拍与情绪曲线", slug: "scenes" },
-  { id: 6, title: "对白", desc: "角色声音、潜台词与信息密度", slug: "dialogue" },
-  { id: 7, title: "成稿", desc: "完整剧本文本与格式收束", slug: "script" },
-  { id: 8, title: "医生", desc: "结构自检、漏洞扫描、修改建议", slug: "doctor" },
+  { id: 1, title: "故事定位", desc: "明确卖点、核心冲突和类型承诺", slug: "concept" },
+  { id: 2, title: "人物关系", desc: "主角欲望、对手压力和人物张力", slug: "characters" },
+  { id: 3, title: "世界规则", desc: "故事场域、规则代价和视觉母题", slug: "world" },
+  { id: 4, title: "剧情大纲", desc: "主线推进、关键转折和结尾钩子", slug: "outline" },
+  { id: 5, title: "场景拆解", desc: "把大纲拆成可拍摄的场景节拍", slug: "scenes" },
+  { id: 6, title: "对白节奏", desc: "角色声音、潜台词和信息密度", slug: "dialogue" },
+  { id: 7, title: "完整剧本", desc: "生成完整剧本文本并统一格式", slug: "script" },
+  { id: 8, title: "剧本体检", desc: "扫描结构漏洞并给出修改建议", slug: "doctor" },
 ];
 
 export const NAV_ITEMS: NavItem[] = [
   { id: "hub", label: "灵感枢纽", eyebrow: "Genesis", realm: "cloudcity" },
   { id: "longform", label: "长故事", eyebrow: "Longform", realm: "cloudcity" },
-  { id: "workflow", label: "剧本工作流", eyebrow: "Screenplay", realm: "valley" },
+  { id: "workflow", label: "剧本生成向导", eyebrow: "Screenplay", realm: "valley" },
   { id: "scripts", label: "剧本任务", eyebrow: "Script Tasks", realm: "valley" },
   { id: "assets", label: "资产锻造", eyebrow: "Assets", realm: "samurai" },
   { id: "visual-prompts", label: "视觉提示词", eyebrow: "Visual Forge", realm: "samurai" },
@@ -54,7 +54,7 @@ export const UI_DEFAULTS = {
 export const NAV_ROUTES = [
   { path: '/', label: '灵感枢纽', icon: 'Sparkles' },
   { path: '/longform', label: '长故事', icon: 'BookOpen' },
-  { path: '/workflow', label: '工作流', icon: 'RouteIcon' },
+  { path: '/workflow', label: '剧本生成', icon: 'RouteIcon' },
   { path: '/scripts', label: '剧本任务', icon: 'FileText' },
   { path: '/assets', label: '资产矩阵', icon: 'Library' },
   { path: '/video', label: '视频提示词', icon: 'Film' },

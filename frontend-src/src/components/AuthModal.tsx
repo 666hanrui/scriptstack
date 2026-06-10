@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useTudouBridge } from "../hooks/useTudouBridge";
 import { useAppStore } from "../store/useAppStore";
+import { setSessionAuth } from "../lib/api-client";
 import {
   Fingerprint,
   Lock,
@@ -48,6 +49,7 @@ export default function AuthModal() {
 
   const syncBackendToken = async (token?: string, refreshToken?: string) => {
     if (!token) return;
+    setSessionAuth(token, refreshToken || "");
     await invoke("auth/set-token", {
       token,
       refreshToken: refreshToken || "",

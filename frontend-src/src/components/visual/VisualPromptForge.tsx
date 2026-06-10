@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Box, CheckCircle2, Clapperboard, Copy, FileText, FolderKanban, Layers3, Map as MapIcon, Search, Sparkles, Upload, Users, Wand2 } from 'lucide-react';
+import { Box, CheckCircle2, Clapperboard, Copy, FileText, FolderKanban, Layers3, Loader2, Map as MapIcon, Search, Sparkles, Upload, Users, Wand2 } from 'lucide-react';
 import { useAppStore } from '../../store/useAppStore';
 import { useTudouBridge } from '../../hooks/useTudouBridge';
 import PageShell from '../ui/PageShell';
@@ -188,6 +188,14 @@ export default function VisualPromptForge() {
     smartGenerate(ids, types, 'missing');
   };
 
+  const busyTitle = busy === 'missing'
+    ? '正在补齐全部缺失视觉标准件'
+    : busy === 'batch'
+      ? `正在生成${TAB_META.find((item) => item.id === activeTab)?.label || '当前分类'}视觉标准件`
+      : busy
+        ? '正在生成单个资产视觉标准件'
+        : '';
+
   return (
     <PageShell maxWidth="max-w-7xl">
       <ModuleHeader
@@ -208,6 +216,21 @@ export default function VisualPromptForge() {
       <div className="hidden">
         <AssetPromptTree onSelect={() => {}} onItemsLoaded={handleItemsLoaded} />
       </div>
+
+      {busyTitle && (
+        <div className="rounded-2xl border border-indigo-500/20 bg-indigo-500/10 p-4 text-indigo-100">
+          <div className="flex items-center gap-3">
+            <Loader2 size={18} className="animate-spin" />
+            <div>
+              <div className="text-sm font-bold">{busyTitle}</div>
+              <div className="mt-1 text-xs text-indigo-100/65 leading-5">系统正在读取中文资产、选择模板、生成英文 AIPROMPT 并保存结果。这个步骤可能需要几十秒到数分钟。</div>
+            </div>
+          </div>
+          <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-white/10">
+            <div className="h-full w-1/3 animate-progress-sweep rounded-full bg-indigo-300" />
+          </div>
+        </div>
+      )}
 
       {error && <div className="rounded-2xl border border-red-500/20 bg-red-500/10 p-4 text-red-200 text-sm">{error}</div>}
 

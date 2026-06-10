@@ -1,0 +1,381 @@
+[
+  {
+    "id": "lm_001",
+    "name": "珠穆朗玛峰",
+    "english_name": "Mount Everest",
+    "coordinates": {
+      "latitude": 27.9881,
+      "longitude": 86.925
+    },
+    "location": {
+      "continent": "亚洲",
+      "country": "中国/尼泊尔",
+      "region": "喜马拉雅山脉"
+    },
+    "description": "世界海拔最高的山峰，常年积雪，地壳运动的典型代表。",
+    "media": {
+      "images": [
+        "/assets/images/everest_01.jpg"
+      ],
+      "videos": []
+    },
+    "related_knowledge_points": [
+      "kp_004"
+    ],
+    "fun_fact": "珠穆朗玛峰由于板块挤压，目前仍在以每年约4毫米的速度长高。"
+  },
+  {
+    "id": "lm_002",
+    "name": "马里亚纳海沟",
+    "english_name": "Mariana Trench",
+    "coordinates": {
+      "latitude": 11.3493,
+      "longitude": 142.1996
+    },
+    "location": {
+      "continent": "大洋洲",
+      "country": "国际海域",
+      "region": "西太平洋"
+    },
+    "description": "地球表面的最深处，最深点“挑战者深渊”深约11,034米。",
+    "media": {
+      "images": [
+        "/assets/images/mariana_01.jpg"
+      ],
+      "videos": []
+    },
+    "related_knowledge_points": [
+      "kp_004"
+    ],
+    "fun_fact": "即使将珠穆朗玛峰放入马里亚纳海沟，其峰顶距离海面仍有2公里多。"
+  },
+  {
+    "id": "lm_003",
+    "name": "东非大裂谷",
+    "english_name": "Great Rift Valley",
+    "coordinates": {
+      "latitude": -0.1,
+      "longitude": 36.0
+    },
+    "location": {
+      "continent": "非洲",
+      "country": "肯尼亚等东非多国",
+      "region": "东非高原"
+    },
+    "description": "地球上最大的断裂带，被称为“地球脸上的巨大伤疤”。",
+    "media": {
+      "images": [
+        "/assets/images/rift_valley_01.jpg"
+      ],
+      "videos": []
+    },
+    "related_knowledge_points": [
+      "kp_004"
+    ],
+    "fun_fact": "几百万年后，东非大裂谷可能会被海水淹没，形成一个新的海洋。"
+  },
+  {
+    "id": "lm_004",
+    "name": "亚马逊热带雨林",
+    "english_name": "Amazon Rainforest",
+    "coordinates": {
+      "latitude": -3.4653,
+      "longitude": -62.2159
+    },
+    "location": {
+      "continent": "南美洲",
+      "country": "巴西等国",
+      "region": "亚马逊盆地"
+    },
+    "description": "全球最大、物种最多的热带雨林，被称为“地球之肺”。",
+    "media": {
+      "images": [
+        "/assets/images/amazon_01.jpg"
+      ],
+      "videos": []
+    },
+    "related_knowledge_points": [
+      "kp_006"
+    ],
+    "fun_fact": "亚马逊雨林产生了地球上20%的氧气，是维持全球生态平衡的关键。"
+  },
+  {
+    "id": "lm_005",
+    "name": "撒哈拉沙漠",
+    "english_name": "Sahara Desert",
+    "coordinates": {
+      "latitude": 23.4162,
+      "longitude": 25.6628
+    },
+    "location": {
+      "continent": "非洲",
+      "country": "北非多国",
+      "region": "北非"
+    },
+    "description": "世界最大的极端干旱沙漠，地表主要被沙丘和岩石覆盖。",
+    "media": {
+      "images": [
+        "/assets/images/sahara_01.jpg"
+      ],
+      "videos": []
+    },
+    "related_knowledge_points": [
+      "kp_006",
+      "kp_010"
+    ],
+    "fun_fact": "数千年前的撒哈拉曾是绿草如茵的湿润地带，气候变化让它变成了如今的沙漠。"
+  },
+  {
+    "id": "lm_006",
+    "name": "大堡礁",
+    "english_name": "Great Barrier Reef",
+    "coordinates": {
+      "latitude": -18.2871,
+      "longitude": 147.6992
+    },
+    "location": {
+      "continent": "大洋洲",
+      "country": "澳大利亚",
+      "region": "珊瑚海"
+    },
+    "description": "全球最大的珊瑚礁生态系统，由成千上万的独立珊瑚礁组成。",
+    "media": {
+      "images": [
+        "/assets/images/barrier_reef_01.jpg"
+      ],
+      "videos": []
+    },
+    "related_knowledge_points": [],
+    "fun_fact": "大堡礁是太空中唯一肉眼可见的生物体结构。"
+  },
+  {
+    "id": "lm_007",
+    "name": "尼亚加拉大瀑布",
+    "english_name": "Niagara Falls",
+    "coordinates": {
+      "latitude": 43.0962,
+      "longitude": -79.0377
+    },
+    "location": {
+      "continent": "北美洲",
+      "country": "美国/加拿大",
+      "region": "五大湖区"
+    },
+    "description": "冰川时代的侵蚀遗迹，以巨大的水流量和震撼的瀑布群著称。",
+    "media": {
+      "images": [
+        "/assets/images/niagara_01.jpg"
+      ],
+      "videos": []
+    },
+    "related_knowledge_points": [
+      "kp_009"
+    ],
+    "fun_fact": "尼亚加拉瀑布的水量极其庞大，每秒有数千立方米的水倾泻而下。"
+  },
+  {
+    "id": "lm_008",
+    "name": "科罗拉多大峡谷",
+    "english_name": "Grand Canyon",
+    "coordinates": {
+      "latitude": 36.1069,
+      "longitude": -112.1129
+    },
+    "location": {
+      "continent": "北美洲",
+      "country": "美国",
+      "region": "亚利桑那州"
+    },
+    "description": "科罗拉多河数百万年切割形成的巨大峡谷，是流水侵蚀的壮丽画卷。",
+    "media": {
+      "images": [
+        "/assets/images/grand_canyon_01.jpg"
+      ],
+      "videos": []
+    },
+    "related_knowledge_points": [
+      "kp_009"
+    ],
+    "fun_fact": "大峡谷岩壁上裸露的岩层，记录了北美大陆近二十亿年的地质历史。"
+  },
+  {
+    "id": "lm_009",
+    "name": "冰岛瓦特纳冰川",
+    "english_name": "Vatnajökull",
+    "coordinates": {
+      "latitude": 64.4127,
+      "longitude": -16.8291
+    },
+    "location": {
+      "continent": "欧洲",
+      "country": "冰岛",
+      "region": "冰岛东南部"
+    },
+    "description": "欧洲体积最大的冰川，被称为“冰与火之歌”，冰川下隐藏着多座活火山。",
+    "media": {
+      "images": [
+        "/assets/images/vatnajokull_01.jpg"
+      ],
+      "videos": []
+    },
+    "related_knowledge_points": [
+      "kp_005",
+      "kp_011"
+    ],
+    "fun_fact": "瓦特纳冰川下方有着活跃的火山系统，当火山爆发时会导致冰川融水形成巨大的冰川洪水。"
+  },
+  {
+    "id": "lm_010",
+    "name": "富士山",
+    "english_name": "Mount Fuji",
+    "coordinates": {
+      "latitude": 35.3606,
+      "longitude": 138.7274
+    },
+    "location": {
+      "continent": "亚洲",
+      "country": "日本",
+      "region": "本州岛"
+    },
+    "description": "日本的最高峰和国家象征，是一座典型的层状活火山。",
+    "media": {
+      "images": [
+        "/assets/images/fuji_01.jpg"
+      ],
+      "videos": []
+    },
+    "related_knowledge_points": [
+      "kp_004",
+      "kp_005"
+    ],
+    "fun_fact": "虽然富士山看起来很平静，但它其实是一座活火山，上一次喷发是在1707年。"
+  },
+  {
+    "id": "lm_011",
+    "name": "乞力马扎罗山",
+    "english_name": "Mount Kilimanjaro",
+    "coordinates": {
+      "latitude": -3.0674,
+      "longitude": 37.3556
+    },
+    "location": {
+      "continent": "非洲",
+      "country": "坦桑尼亚",
+      "region": "东非高原"
+    },
+    "description": "非洲大陆的最高峰，因位于赤道附近却拥有雪顶而闻名，被称为“赤道雪山”。",
+    "media": {
+      "images": [
+        "/assets/images/kilimanjaro_01.jpg"
+      ],
+      "videos": []
+    },
+    "related_knowledge_points": [
+      "kp_006",
+      "kp_017"
+    ],
+    "fun_fact": "受全球气候变暖影响，乞力马扎罗山顶的冰雪正在迅速消退，科学家预测其雪顶可能会在未来几十年内消失。"
+  },
+  {
+    "id": "lm_012",
+    "name": "贝加尔湖",
+    "english_name": "Lake Baikal",
+    "coordinates": {
+      "latitude": 53.5587,
+      "longitude": 108.165
+    },
+    "location": {
+      "continent": "亚洲",
+      "country": "俄罗斯",
+      "region": "西伯利亚"
+    },
+    "description": "世界上最深、蓄水量最大的淡水湖，蕴藏着全球近五分之一的未冻结淡水。",
+    "media": {
+      "images": [
+        "/assets/images/baikal_01.jpg"
+      ],
+      "videos": []
+    },
+    "related_knowledge_points": [
+      "kp_004",
+      "kp_008"
+    ],
+    "fun_fact": "贝加尔湖是由地壳断层陷落形成的，湖中生活着世界上唯一的淡水海豹——贝加尔海豹。"
+  },
+  {
+    "id": "lm_013",
+    "name": "黄石国家公园",
+    "english_name": "Yellowstone National Park",
+    "coordinates": {
+      "latitude": 44.428,
+      "longitude": -110.5885
+    },
+    "location": {
+      "continent": "北美洲",
+      "country": "美国",
+      "region": "怀俄明州"
+    },
+    "description": "世界上第一个国家公园，以丰富的地热资源（如老忠实间歇泉）和野生动物闻名。",
+    "media": {
+      "images": [
+        "/assets/images/yellowstone_01.jpg"
+      ],
+      "videos": []
+    },
+    "related_knowledge_points": [
+      "kp_005"
+    ],
+    "fun_fact": "黄石国家公园下方隐藏着一个巨大的“超级火山”，其喷发周期约为60万年。"
+  },
+  {
+    "id": "lm_014",
+    "name": "死海",
+    "english_name": "Dead Sea",
+    "coordinates": {
+      "latitude": 31.559,
+      "longitude": 35.4732
+    },
+    "location": {
+      "continent": "亚洲",
+      "country": "约旦/以色列",
+      "region": "约旦裂谷"
+    },
+    "description": "地球陆地的最低点，以极高的盐度著称，水中几乎没有任何生物存活。",
+    "media": {
+      "images": [
+        "/assets/images/dead_sea_01.jpg"
+      ],
+      "videos": []
+    },
+    "related_knowledge_points": [
+      "kp_006",
+      "kp_008"
+    ],
+    "fun_fact": "死海的盐度是普通海水的10倍左右，高密度使得人可以毫不费力地漂浮在水面上。"
+  },
+  {
+    "id": "lm_015",
+    "name": "乌鲁鲁巨石",
+    "english_name": "Uluru",
+    "coordinates": {
+      "latitude": -25.3444,
+      "longitude": 131.0369
+    },
+    "location": {
+      "continent": "大洋洲",
+      "country": "澳大利亚",
+      "region": "北领地"
+    },
+    "description": "位于澳大利亚中部沙漠中的巨大红色岩石，是原住民的圣地，也是典型的风化剥蚀地貌。",
+    "media": {
+      "images": [
+        "/assets/images/uluru_01.jpg"
+      ],
+      "videos": []
+    },
+    "related_knowledge_points": [
+      "kp_010"
+    ],
+    "fun_fact": "乌鲁鲁巨石的颜色会随着一天中时间和光线的变化而发生戏剧性的改变。"
+  }
+]

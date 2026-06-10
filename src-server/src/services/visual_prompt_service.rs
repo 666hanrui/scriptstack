@@ -1,6 +1,7 @@
 use rusqlite::{params, Connection};
 use serde_json::{json, Value};
 use sha2::{Digest, Sha256};
+use futures::stream::{self, StreamExt};
 
 use crate::llm::config::RuntimeConfig;
 use crate::llm::server_proxy::{self, ContextualLlmParams};
@@ -364,11 +365,25 @@ pub async fn generate_smart_prompt_payloads(plan: SmartPromptPlan) -> Result<Vec
         return Err("文本模型 API 未配置，无法生成英文 AIPROMPT。请先到设置页配置 DeepSeek / OpenAI / Claude / Gemini 等文本模型。".to_string());
     }
 
-    let mut out = Vec::new();
-    for asset in &plan.assets {
-        out.push(generate_one(asset, &plan.runtime_config).await?);
-    }
-    Ok(out)
+    let runtime_config = plan.runtime_config.clone();
+    let concurrency = std::env::var("SCRIPTSTACK_VISUAL_PROMPT_CONCURRENCY")
+        .ok()
+        .and_then(|v| v.parse::<usize>().ok())
+        .unwrap_or(6)
+        .clamp(1, 24);
+    let mut indexed = stream::iter(plan.assets.into_iter().enumerate())
+        .map(|(index, asset)| {
+            let runtime_config = runtime_config.clone();
+            async move { generate_one(&asset, &runtime_config).await.map(|value| (index, value)) }
+        })
+        .buffer_unordered(concurrency)
+        .collect::<Vec<_>>()
+        .await
+        .into_iter()
+        .collect::<Result<Vec<_>, _>>()?;
+
+    indexed.sort_by_key(|(index, _)| *index);
+    Ok(indexed.into_iter().map(|(_, value)| value).collect())
 }
 
 pub fn save_smart_prompt_payloads(conn: &Connection, payloads: &[Value]) -> Result<Vec<Value>, String> {

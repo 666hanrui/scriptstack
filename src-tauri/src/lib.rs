@@ -97,7 +97,7 @@ mod cmd {
     /// 版本号
     #[tauri::command]
     pub fn get_version() -> String {
-        "3.0.0-cloud".to_string()
+        "3.0.3-cloud".to_string()
     }
 
     /// 选择本地文本文件（txt / md / docx / pdf），解析后返回内容

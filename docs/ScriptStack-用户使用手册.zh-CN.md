@@ -1,8 +1,8 @@
 # ScriptStack 用户使用手册
 
-版本：3.0.0  
+版本：3.0.2  
 适用客户端：macOS Apple Silicon、macOS Intel、Windows x64  
-默认服务器：`https://544834.xyz`
+当前 Beta 默认服务器：`http://49.235.153.151`
 
 ## 1. ScriptStack 是什么
 
@@ -15,16 +15,16 @@ ScriptStack 是一套“桌面客户端 + 云端生产后端”的剧本生产�
 ```text
 你的电脑上的 ScriptStack App
     |
-    | HTTPS API
+    | HTTP/HTTPS API
     v
-ScriptStack 云端服务器 https://544834.xyz
+ScriptStack 云端服务器
     |
     | 数据库 / LLM / 文件材料 / 项目流程
     v
 剧本、长篇项目、角色场景道具资产、提示词结果
 ```
 
-浏览器访问 `https://544834.xyz` 主要用于排查服务器是否活着，不是主要使用方式。
+当前 `544834.xyz` 域名在外网访问时会被服务商拦截到 DNSPod webblock，因此本轮 Beta 暂时使用 `http://49.235.153.151` 作为网页和桌面客户端的 API 入口。域名备案/解除拦截后，再切回正式 HTTPS 域名。
 
 ## 2. 支持的平台
 
@@ -51,7 +51,7 @@ Windows 安装包通过 GitHub Actions 的 Windows runner 打包，不建议在 
 
 ### macOS 安装
 
-1. 获取 `ScriptStack_3.0.0_universal.dmg` 或类似名称的 DMG 文件。
+1. 获取 `ScriptStack_3.0.2_universal.dmg` 或类似名称的 DMG 文件。
 2. 双击打开 DMG。
 3. 将 `ScriptStack.app` 拖入 `Applications`。
 4. 从启动台或应用程序文件夹打开 ScriptStack。
@@ -84,7 +84,7 @@ Windows 安装包通过 GitHub Actions 的 Windows runner 打包，不建议在 
 第一次打开后，App 会连接默认服务器：
 
 ```text
-https://544834.xyz
+http://49.235.153.151
 ```
 
 如果服务器可用，界面会正常进入登录页或主界面。
@@ -102,7 +102,7 @@ ScriptStack 使用服务器账号体系。账号数据保存在服务器数据�
 3. 输入密码。
 4. 点击登录。
 
-登录后，App 会把访问 token 保存在本机浏览器内核的本地存储里。后续请求会自动带上 token。
+登录后，App 会在当前会话里保存访问 token。退出登录、token 失效或重新安装后，系统会尽量清理旧登录态，避免卸载重装后仍然自动登录。
 
 ### 退出登录
 
@@ -363,7 +363,7 @@ Windows 包在 GitHub Actions 中打：
 2. 进入 Actions。
 3. 选择 `Desktop Release Packages`。
 4. 点击 `Run workflow`。
-5. 确认 `api_base` 是 `https://544834.xyz`。
+5. 当前 Beta 确认 `api_base` 是 `http://49.235.153.151`；域名恢复后再改回正式 HTTPS 域名。
 6. 等待 Windows x64 job 完成。
 7. 从 Artifacts 下载 `ScriptStack-Windows-x64`。
 
@@ -380,12 +380,14 @@ Windows 包在 GitHub Actions 中打：
 
 如果浏览器也需要访问，用于测试服务器时：
 
-1. 检查域名 A 记录是否指向服务器 IPv4。
-2. 检查是否存在错误 AAAA 记录。
-3. 检查代理或浏览器 DNS 是否劫持。
-4. 检查 Nginx 是否正常。
+1. 当前先访问 `http://49.235.153.151`。
+2. 检查域名 A 记录是否指向服务器 IPv4。
+3. 检查是否存在错误 AAAA 记录。
+4. 检查代理或浏览器 DNS 是否劫持。
+5. 检查 Nginx 是否正常。
+6. 检查域名是否被服务商拦截或要求备案。
 
-当前 `544834.xyz` 如果存在不属于服务器的 AAAA 记录，部分网络会优先走 IPv6，导致访问失败。应删除错误 AAAA 记录，只保留正确 A 记录。
+当前 `544834.xyz` 公共 DNS 解析本身可以指向服务器，但外网 HTTP 会被跳转到 DNSPod webblock，HTTPS 会被直接断开。这不是 ScriptStack 后端崩溃，而是域名访问层被拦截；临时方案是使用 `http://49.235.153.151`。
 
 ### App 提示底层通信断裂
 

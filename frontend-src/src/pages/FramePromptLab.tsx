@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Activity, Boxes, CheckCircle2, Clapperboard, FileText, Film, FolderKanban, Image as ImageIcon, Layers3, RefreshCw, Save, Sparkles, Wand2 } from 'lucide-react';
+import { Activity, Boxes, CheckCircle2, Clapperboard, FileText, Film, FolderKanban, Image as ImageIcon, Layers3, Loader2, RefreshCw, Save, Sparkles, Wand2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import ScriptSelector from '../components/ScriptSelector';
 import { useTudouBridge } from '../hooks/useTudouBridge';
@@ -14,6 +14,7 @@ import ActionBar, { ActionButton } from '../components/ui/ActionBar';
 import EmptyState from '../components/ui/EmptyState';
 import FormField, { TextArea, TextInput } from '../components/ui/FormField';
 import ResultViewer from '../components/ui/ResultViewer';
+import FlowChecklist, { type FlowChecklistItem } from '../components/ui/FlowChecklist';
 
 function projectIdOfTask(task: ScriptTask) {
   const anyTask = task as any;
@@ -65,6 +66,41 @@ function groupSceneIndex(group: any, fallback: number) {
   return fallback;
 }
 
+const busyCopy: Record<string, { title: string; detail: string }> = {
+  load: { title: '正在恢复已有输出', detail: '正在从服务器读取 Outline、逐镜结果和视觉标准件。' },
+  outline: { title: '正在生成分镜大纲', detail: '大模型正在把剧本拆成可生成的镜头列表，完成后会自动刷新右侧结果。' },
+  confirm: { title: '正在确认分镜大纲', detail: '正在保存当前 Outline，后续逐镜生成会以它为准。' },
+  all: { title: '正在全量逐镜生成', detail: '这个步骤耗时较长，系统会生成所有镜头的 Seedance / 分镜提示词。' },
+  group: { title: '正在生成当前镜头', detail: '只重算右侧选中的单个镜头，完成后会精准回到当前镜头。' },
+  save: { title: '正在保存逐镜结果', detail: '正在写入你调整过的 Seedance Groups。' },
+  quality: { title: '正在做质量检查', detail: '正在扫描提示词缺漏、格式和可执行性。' },
+  visual: { title: '正在补齐视觉标准件', detail: '正在为人物、场景、道具生成英文 AIPROMPT。' },
+};
+
+function ProgressNotice({ busy }: { busy: string }) {
+  if (!busy) return null;
+  const copy = busyCopy[busy] || { title: '正在处理', detail: '任务仍在运行，请等待当前操作完成。' };
+  return (
+    <div className="rounded-2xl border border-indigo-500/20 bg-indigo-500/10 p-4 text-indigo-100">
+      <div className="flex items-center gap-3">
+        <Loader2 size={18} className="animate-spin" />
+        <div>
+          <div className="text-sm font-bold">{copy.title}</div>
+          <div className="mt-1 text-xs text-indigo-100/65 leading-5">{copy.detail}</div>
+        </div>
+      </div>
+      <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-white/10">
+        <div className="h-full w-1/3 animate-progress-sweep rounded-full bg-indigo-300" />
+      </div>
+    </div>
+  );
+}
+
+function isMissingVisualStandardsError(err: any) {
+  const message = err instanceof Error ? err.message : String(err || '');
+  return message.includes('缺少英文视觉标准件');
+}
+
 export default function FramePromptLab() {
   const { invoke } = useTudouBridge();
   const navigate = useNavigate();
@@ -95,6 +131,92 @@ export default function FramePromptLab() {
   const gridGroups = useMemo(() => outputGridGroups(output), [output]);
   const activeShot = shots[activeSceneIndex] || null;
   const activeGroup = seedanceGroups.find((group: any, index: number) => groupSceneIndex(group, index) === activeSceneIndex) || seedanceGroups[activeSceneIndex] || null;
+  const flowItems: FlowChecklistItem[] = useMemo(() => {
+    const hasTask = Boolean(selectedTaskId);
+    const hasVisual = visualOutputs.length > 0;
+    const hasOutline = Boolean(outline);
+    const hasGroups = seedanceGroups.length > 0;
+    return [
+      {
+        label: '选择剧本任务',
+        detail: hasTask ? '已绑定当前 Script Task。' : '先选择一条剧本任务，逐镜链路会以它作为恢复主键。',
+        status: hasTask ? 'done' : 'active',
+      },
+      {
+        label: '补齐视觉标准件',
+        detail: busy === 'visual'
+          ? '正在生成人物、场景、道具的英文 AIPROMPT。'
+          : hasVisual
+            ? `已匹配 ${visualOutputs.length} 个英文视觉标准件。`
+            : '点击自动补齐，系统会先生成缺失 AIPROMPT。',
+        status: !hasTask ? 'pending' : busy === 'visual' ? 'working' : hasVisual ? 'done' : 'active',
+      },
+      {
+        label: '生成并确认 Outline',
+        detail: busy === 'outline'
+          ? '正在把剧本拆成可生成的镜头大纲。'
+          : busy === 'confirm'
+            ? '正在保存当前 Outline，后续逐镜生成会以它为准。'
+            : hasOutline
+              ? `已生成 ${outlineTotal(outline) || shots.length} 个镜头。`
+              : '生成 Outline 后，再进入全量逐镜或单镜重算。',
+        status: !hasTask || !hasVisual ? 'pending' : busy === 'outline' || busy === 'confirm' ? 'working' : hasOutline ? 'done' : 'active',
+      },
+      {
+        label: '逐镜生成 / 修订',
+        detail: busy === 'all'
+          ? '正在全量生成所有镜头提示词。'
+          : busy === 'group'
+            ? `正在重算第 ${activeSceneIndex + 1} 镜。`
+            : hasGroups
+              ? `已有 ${seedanceGroups.length} 组逐镜结果。`
+              : '确认 Outline 后，生成全部镜头或只修订当前镜。',
+        status: !hasOutline ? 'pending' : busy === 'all' || busy === 'group' ? 'working' : hasGroups ? 'done' : 'active',
+      },
+    ];
+  }, [activeSceneIndex, busy, outline, seedanceGroups.length, selectedTaskId, shots.length, visualOutputs.length]);
+
+  const mergeVisualOutputs = (rows: any[]) => {
+    setVisualOutputs((prev) => {
+      const seen = new Set<string>();
+      return [...rows, ...prev].filter((row) => {
+        const key = row?.id || `${row?.assetType || row?.asset_type || ''}:${row?.assetId || row?.asset_id || ''}:${row?.generationMode || row?.generation_mode || ''}`;
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      });
+    });
+  };
+
+  const generateVisualStandards = async () => {
+    if (!selectedTaskId) throw new Error('请先选择 script task。');
+    const rows = await invoke<any[]>('visual/smart-generate-asset-prompt', {
+      taskId: selectedTaskId,
+      assetTypes: ['character', 'scene', 'prop'],
+      mode: 'storyboard',
+    }, { timeout: 900000 });
+    const list = Array.isArray(rows) ? rows : [];
+    mergeVisualOutputs(list);
+    return list;
+  };
+
+  const runWithVisualAutoRepair = async <T,>(busyState: typeof busy, action: () => Promise<T>) => {
+    setBusy(busyState);
+    setError('');
+    try {
+      return await action();
+    } catch (err: any) {
+      if (!isMissingVisualStandardsError(err)) throw err;
+      setError('缺少视觉标准件，正在自动补齐英文 AIPROMPT，补齐后会继续刚才的步骤。');
+      setBusy('visual');
+      await generateVisualStandards();
+      showToast('视觉标准件已自动补齐，继续执行当前步骤');
+      setBusy(busyState);
+      return await action();
+    } finally {
+      setBusy('');
+    }
+  };
 
   const refreshAll = async (taskId = selectedTaskId) => {
     if (!taskId) return;
@@ -143,17 +265,15 @@ export default function FramePromptLab() {
 
   const generateOutline = async () => {
     if (!selectedTaskId) return setError('请先选择 script task。');
-    setBusy('outline');
-    setError('');
     try {
-      const result = await invoke<any>('prompt/generate-outline', { taskId: selectedTaskId }, { timeout: 900000 });
+      const result = await runWithVisualAutoRepair('outline', () =>
+        invoke<any>('prompt/generate-outline', { taskId: selectedTaskId }, { timeout: 900000 })
+      );
       setOutline(result?.outline || result);
       showToast('分镜大纲已生成');
       await refreshAll(selectedTaskId);
     } catch (err: any) {
       setError(err.message || '生成分镜大纲失败');
-    } finally {
-      setBusy('');
     }
   };
 
@@ -174,37 +294,33 @@ export default function FramePromptLab() {
 
   const runAll = async () => {
     if (!selectedTaskId) return setError('请先选择 script task。');
-    setBusy('all');
-    setError('');
     try {
-      const result = await invoke<any>('prompt/run-generation', { taskId: selectedTaskId }, { timeout: 900000 });
+      const result = await runWithVisualAutoRepair('all', () =>
+        invoke<any>('prompt/run-generation', { taskId: selectedTaskId }, { timeout: 900000 })
+      );
       setOutput({ ...(output || {}), seedanceGroupsJson: JSON.stringify(result?.seedanceGroups || [], null, 2), generationModel: result?.generationModel, createdAt: result?.generatedAt });
       setEditedSeedanceGroups(JSON.stringify(result?.seedanceGroups || [], null, 2));
       showToast('逐镜提示词已全部生成');
       await refreshAll(selectedTaskId);
     } catch (err: any) {
       setError(err.message || '逐镜生成失败');
-    } finally {
-      setBusy('');
     }
   };
 
   const runGroup = async () => {
     if (!selectedTaskId) return setError('请先选择 script task。');
-    setBusy('group');
-    setError('');
     try {
       const payload: any = { taskId: selectedTaskId, sceneIndex: activeSceneIndex };
       if (reviewFeedback.trim()) payload.reviewFeedback = reviewFeedback;
       if (originalSeedance.trim()) payload.originalSeedance = originalSeedance;
-      const result = await invoke<any>('prompt/run-group-generation', payload, { timeout: 900000 });
+      const result = await runWithVisualAutoRepair('group', () =>
+        invoke<any>('prompt/run-group-generation', payload, { timeout: 900000 })
+      );
       showToast(`分镜 ${activeSceneIndex + 1} 已重新生成`);
       if (result?.seedanceGroups) setOriginalSeedance(JSON.stringify(result.seedanceGroups[0] || result.seedanceGroups, null, 2));
       await refreshAll(selectedTaskId);
     } catch (err: any) {
       setError(err.message || '单镜生成失败');
-    } finally {
-      setBusy('');
     }
   };
 
@@ -244,12 +360,7 @@ export default function FramePromptLab() {
     setBusy('visual');
     setError('');
     try {
-      const rows = await invoke<any[]>('visual/smart-generate-asset-prompt', {
-        taskId: selectedTaskId,
-        assetTypes: ['character', 'scene', 'prop'],
-        mode: 'storyboard',
-      }, { timeout: 900000 });
-      setVisualOutputs((prev) => [...(Array.isArray(rows) ? rows : []), ...prev]);
+      await generateVisualStandards();
       showToast('逐镜视觉标准件已补齐');
       await refreshAll(selectedTaskId);
     } catch (err: any) {
@@ -295,6 +406,9 @@ export default function FramePromptLab() {
         { label: '英文视觉标准件', value: `${visualOutputs.length}` },
       ]} />
 
+      <FlowChecklist title="逐镜生成路径" items={flowItems} />
+
+      <ProgressNotice busy={busy} />
       {error && <div className="rounded-2xl border border-red-500/20 bg-red-500/10 p-4 text-red-200 text-sm">{error}</div>}
       {selectedTaskId && visualOutputs.length === 0 && (
         <div className="rounded-2xl border border-yellow-500/20 bg-yellow-500/10 p-4 text-yellow-100 text-sm">

@@ -1,0 +1,1 @@
+export default function Landscape() { return <div className="flex items-center justify-center w-full h-screen bg-gray-900 text-white text-3xl font-bold">世界景观模块 (占位)</div>; }

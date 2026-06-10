@@ -93,6 +93,7 @@ export default function StepEngine({
   const [selfcheckItems, setSelfcheckItems] = useState<any[]>([]);
   const [checkpoint, setCheckpoint] = useState("");
   const [error, setError] = useState("");
+  const [revisionInstruction, setRevisionInstruction] = useState("");
 
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const contentEndRef = useRef<HTMLDivElement>(null);
@@ -141,6 +142,24 @@ export default function StepEngine({
     if (isGenerating)
       contentEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [content, isGenerating]);
+
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== "Enter" || event.shiftKey || event.metaKey || event.ctrlKey || event.altKey) return;
+      const target = event.target as HTMLElement | null;
+      const tag = target?.tagName?.toLowerCase();
+      if (tag === "textarea" || tag === "input" || target?.isContentEditable) return;
+      if (!currentProjectId || !canGenerate) return;
+      event.preventDefault();
+      if (!content.trim()) {
+        handleIgnite();
+      } else if (canApprove) {
+        handleApprove();
+      }
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  });
 
   const loadVersions = async () => {
     if (!currentProjectId) return;
@@ -222,12 +241,17 @@ export default function StepEngine({
 
       const result = await invoke<any>(
         "workflow/generate",
-        { projectId: currentProjectId, stepNumber: stepConfig.id },
+        {
+          projectId: currentProjectId,
+          stepNumber: stepConfig.id,
+          userFeedback: revisionInstruction.trim() || undefined,
+        },
         { timeout: 300000 }
       );
 
       const finalText = result?.text || streamed;
       if (finalText) setContent(finalText);
+      setRevisionInstruction("");
       onProjectChanged?.();
     } catch (error: any) {
       const message = error.message || "生成失败";
@@ -375,14 +399,14 @@ export default function StepEngine({
             {isApproved && <CheckCircle2 size={20} className="text-green-400" />}
           </h3>
           <span className="text-[10px] font-mono text-white/30 uppercase mt-1">
-            Step Module ID: {stepConfig.id} {activeVersion?.id ? `· Version ${activeVersion.id}` : ""}
+            第 {stepConfig.id} 步 · {activeVersion?.id ? `版本 ${activeVersion.id}` : "等待生成"}
           </span>
         </div>
 
         <div className="flex shrink-0 flex-wrap justify-end gap-3">
           <button onClick={handleIgnite} disabled={!canGenerate} className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-sm transition-all duration-300 disabled:opacity-50 active:scale-95 shadow-[0_0_20px_rgba(99,102,241,0.3)]">
             {isGenerating ? <Loader2 className="animate-spin" size={16} /> : content ? <RefreshCw size={16} /> : <Play size={16} className="fill-white" />}
-            {isGenerating ? "流式解算中..." : content ? "重新生成" : "生成"}
+            {isGenerating ? "生成中..." : content ? "重新生成" : "生成本步"}
           </button>
           <button onClick={handleSelfcheck} disabled={!content.trim() || !canGenerate} className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-cyan-900/30 border border-cyan-500/30 text-cyan-100 font-bold text-sm transition-all duration-300 disabled:opacity-40 hover:bg-cyan-900/50">
             {isSelfchecking ? <Loader2 className="animate-spin" size={16} /> : <ShieldCheck size={16} />}
@@ -396,7 +420,7 @@ export default function StepEngine({
             {content && !isGenerating && (
               <motion.button initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} onClick={() => isEditing ? saveManualEdit() : setIsEditing(true)} disabled={isSavingEdit} className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold transition-all duration-300 ${isEditing ? "bg-white text-black" : "bg-white/5 border border-white/10 text-white hover:bg-white/10"}`}>
                 {isSavingEdit ? <Loader2 size={16} className="animate-spin" /> : isEditing ? <Save size={16} /> : <Edit3 size={16} />}
-                {isEditing ? "保存覆写" : "介入编辑"}
+                {isEditing ? "保存覆写" : "直接编辑"}
               </motion.button>
             )}
           </AnimatePresence>
@@ -405,14 +429,26 @@ export default function StepEngine({
 
       <div className="min-h-0 flex-1 p-8 overflow-y-auto custom-scrollbar relative z-10">
         {error && <div className="mb-4 rounded-2xl border border-red-500/30 bg-red-950/40 px-4 py-3 text-sm text-red-100">{error}</div>}
+        {content && !isEditing && !isGenerating && (
+          <div className="mb-4 rounded-2xl border border-white/10 bg-white/[0.03] p-3">
+            <div className="mb-2 text-xs font-bold text-white/45">让大模型按你的要求重写本步</div>
+            <textarea
+              value={revisionInstruction}
+              onChange={(event) => setRevisionInstruction(event.target.value)}
+              rows={2}
+              className="w-full resize-none rounded-xl border border-white/10 bg-black/25 px-3 py-2 text-sm text-white/80 outline-none focus:border-indigo-400/50"
+              placeholder="例如：保留主设定，但把人物动机写得更狠；或把这一版改成校园悬疑口吻。"
+            />
+          </div>
+        )}
         {checkpoint && stepConfig.id >= 6 && <div className="mb-4 rounded-2xl border border-emerald-500/20 bg-emerald-950/20 px-4 py-3 text-sm text-emerald-100"><div className="flex items-center gap-2 font-bold mb-2"><ClipboardCheck size={16} /> after-step-6 checkpoint 已存在</div><div className="line-clamp-3 text-emerald-100/70">{checkpoint}</div></div>}
         {showVersions && <div className="mb-4 rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm text-white/80"><div className="flex items-center justify-between mb-3"><div className="flex items-center gap-2 font-bold"><History size={16} /> 版本历史</div><button className="text-xs text-white/40 hover:text-white" onClick={loadVersions}>刷新</button></div>{versions.length === 0 ? <div className="text-white/35">当前步骤暂无历史版本。</div> : <div className="space-y-2 max-h-56 overflow-y-auto custom-scrollbar">{versions.map((version, index) => { const versionId = getVersionId(version); const active = versionId && versionId === getVersionId(activeVersion); const preview = getVersionText(version).slice(0, 160); return <div key={versionId || index} className={`rounded-xl border p-3 ${active ? "border-indigo-400/40 bg-indigo-500/10" : "border-white/5 bg-black/20"}`}><div className="flex items-center justify-between gap-3"><div><div className="font-bold text-white/90">Version {getVersionNumber(version, index)} {active ? "· 当前" : ""}</div><div className="text-xs text-white/35">{getVersionCreatedAt(version) || versionId}</div></div><button className="inline-flex items-center gap-1.5 rounded-lg border border-white/10 bg-white/[0.04] px-3 py-1.5 text-xs font-bold text-white/70 transition-colors hover:bg-white/[0.08] hover:text-white disabled:cursor-not-allowed disabled:opacity-40" onClick={() => restoreVersion(version)} disabled={active || restoringVersionId === versionId}>{restoringVersionId === versionId ? <Loader2 size={14} className="animate-spin" /> : <RotateCcw size={14} />}恢复</button></div><div className="mt-2 text-xs text-white/45 line-clamp-2 whitespace-pre-wrap">{preview || "无文本预览"}</div></div>; })}</div>}</div>}
         {selfcheckItems.length > 0 && <div className="mb-4 rounded-2xl border border-cyan-500/20 bg-cyan-950/20 px-4 py-3 text-sm text-cyan-100"><div className="flex items-center gap-2 font-bold mb-3"><ShieldCheck size={16} /> 自检结果</div><div className="space-y-2">{selfcheckItems.map((item, index) => <div key={index} className="rounded-xl bg-black/25 border border-white/5 p-3 text-cyan-100/80 whitespace-pre-wrap">{typeof item === "string" ? item : JSON.stringify(item, null, 2)}</div>)}</div></div>}
-        {!content && !isGenerating ? <div className="h-full flex flex-col items-center justify-center text-white/20"><Play size={48} className="mb-4 opacity-30" /><p className="tracking-widest uppercase font-mono text-sm">Awaiting Engine Ignition</p><p className="text-xs text-white/30 mt-2">当前步骤还没有 active version 输出。</p></div> : isEditing ? <textarea ref={textareaRef} value={content} onChange={(e) => setContent(e.target.value)} className="w-full h-full bg-transparent text-white/90 text-lg leading-loose p-4 focus:outline-none resize-none font-serif custom-scrollbar" autoFocus /> : <div className="prose prose-invert max-w-none font-serif text-lg leading-loose text-white/80 whitespace-pre-wrap">{content}{isGenerating && <span className="inline-block w-[0.6em] h-[1.2em] bg-white/80 align-middle ml-1 animate-[pulse_0.8s_infinite]" />}<div ref={contentEndRef} className="h-10" /></div>}
+        {!content && !isGenerating ? <div className="h-full flex flex-col items-center justify-center text-white/25 text-center px-6"><Play size={48} className="mb-4 opacity-30" /><p className="tracking-widest uppercase font-mono text-sm">等待生成当前步骤</p><p className="text-xs text-white/38 mt-2 leading-6">点击“生成本步”，或直接按 Enter。生成结果出现后，再按 Enter 会批准并进入下一步。</p></div> : isEditing ? <textarea ref={textareaRef} value={content} onChange={(e) => setContent(e.target.value)} className="w-full h-full bg-transparent text-white/90 text-lg leading-loose p-4 focus:outline-none resize-none font-serif custom-scrollbar" autoFocus /> : <div className="prose prose-invert max-w-none font-serif text-lg leading-loose text-white/80 whitespace-pre-wrap">{content}{isGenerating && <span className="inline-block w-[0.6em] h-[1.2em] bg-white/80 align-middle ml-1 animate-[pulse_0.8s_infinite]" />}<div ref={contentEndRef} className="h-10" /></div>}
       </div>
 
       <div className="shrink-0 px-8 py-5 border-t border-white/[0.05] flex flex-wrap justify-between items-center gap-3 bg-black/20 relative z-10 shadow-[0_-16px_32px_rgba(0,0,0,0.28)]">
-        <div className="text-white/30 text-xs font-mono flex items-center gap-2"><div className={`w-2 h-2 rounded-full ${isGenerating || isSelfchecking || isCheckpointing || isSavingEdit || isFinalizing ? "bg-yellow-400 animate-ping" : content ? isApproved ? "bg-green-400" : "bg-cyan-400" : "bg-white/20"}`} />{isGenerating ? "STREAMING DATA..." : isSelfchecking ? "SELF CHECKING..." : isCheckpointing ? "CHECKPOINTING..." : isSavingEdit ? "SAVING EDIT..." : isFinalizing ? "FINALIZING..." : isApproved ? "STEP APPROVED" : content ? "MODULE READY" : "STANDBY"}</div>
+        <div className="text-white/35 text-xs font-mono flex items-center gap-2"><div className={`w-2 h-2 rounded-full ${isGenerating || isSelfchecking || isCheckpointing || isSavingEdit || isFinalizing ? "bg-yellow-400 animate-ping" : content ? isApproved ? "bg-green-400" : "bg-cyan-400" : "bg-white/20"}`} />{isGenerating ? "正在流式生成..." : isSelfchecking ? "正在自检..." : isCheckpointing ? "正在生成记忆检查点..." : isSavingEdit ? "正在保存..." : isFinalizing ? "正在转入资产..." : isApproved ? "本步已批准" : content ? "结果待批准" : "按 Enter 生成"}</div>
         <button onClick={handleApprove} disabled={!canApprove} className="flex items-center gap-2 px-6 py-2.5 rounded-xl bg-white text-black font-bold text-sm transition-all duration-300 disabled:opacity-20 disabled:scale-100 hover:scale-105 hover:shadow-[0_0_20px_rgba(255,255,255,0.3)] group">
           {isApproving || isCheckpointing || isFinalizing ? <Loader2 size={16} className="animate-spin" /> : null}
           {isImportFinalize && !content.trim() ? "导入剧本并进入资产锻造" : isLastStep ? "批准并进入资产锻造" : "批准本步并进入下一步"}

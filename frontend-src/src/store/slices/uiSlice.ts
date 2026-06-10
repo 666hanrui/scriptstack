@@ -32,6 +32,9 @@ export interface UISlice {
   accentColor: string;
   setAccentColor: (color: string) => void;
 
+  sidebarPinned: boolean;
+  setSidebarPinned: (pinned: boolean) => void;
+
   globalError: GlobalError | null;
   setGlobalError: (error: GlobalError | null) => void;
   clearError: () => void;
@@ -52,6 +55,9 @@ export const createUISlice: StateCreator<UISlice, [], [], UISlice> = (set) => ({
 
   accentColor: "#6366f1",
   setAccentColor: (color) => set({ accentColor: color }),
+
+  sidebarPinned: false,
+  setSidebarPinned: (sidebarPinned) => set({ sidebarPinned }),
 
   globalError: null,
   setGlobalError: (globalError) => set({ globalError }),

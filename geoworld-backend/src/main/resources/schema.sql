@@ -1,0 +1,45 @@
+-- 城市表
+CREATE TABLE IF NOT EXISTS `city` (
+    `id` BIGINT AUTO_INCREMENT PRIMARY KEY,
+    `name` VARCHAR(100) NOT NULL,
+    `description` TEXT,
+    `create_time` DATETIME DEFAULT CURRENT_TIMESTAMP,
+    `update_time` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+
+-- 景观点表
+CREATE TABLE IF NOT EXISTS `landscape` (
+    `id` BIGINT AUTO_INCREMENT PRIMARY KEY,
+    `code` VARCHAR(50) UNIQUE,
+    `type` VARCHAR(50),
+    `city_id` BIGINT NOT NULL,
+    `name` VARCHAR(100) NOT NULL,
+    `description` TEXT,
+    `longitude` DECIMAL(10,6),
+    `latitude` DECIMAL(10,6),
+    `create_time` DATETIME DEFAULT CURRENT_TIMESTAMP,
+    `update_time` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+
+-- 知识点表
+CREATE TABLE IF NOT EXISTS `knowledge` (
+    `id` BIGINT AUTO_INCREMENT PRIMARY KEY,
+    `code` VARCHAR(50) UNIQUE,
+    `category` VARCHAR(50),
+    `landscape_id` BIGINT,
+    `title` VARCHAR(200) NOT NULL,
+    `content` TEXT NOT NULL,
+    `create_time` DATETIME DEFAULT CURRENT_TIMESTAMP,
+    `update_time` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+
+-- 任务表
+CREATE TABLE IF NOT EXISTS `task` (
+    `id` BIGINT AUTO_INCREMENT PRIMARY KEY,
+    `city_id` BIGINT NOT NULL,
+    `title` VARCHAR(200) NOT NULL,
+    `description` TEXT,
+    `reward_points` INT DEFAULT 0,
+    `create_time` DATETIME DEFAULT CURRENT_TIMESTAMP,
+    `update_time` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
